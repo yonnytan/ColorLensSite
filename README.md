@@ -6,7 +6,7 @@ A modern web application that extracts color palettes from images. Built with Re
 
 - Drag and drop image upload
 - Extract dominant colors from images
-- Adjustable number of colors (3-10)
+- Adjustable number of colors (3-8)
 - Copy color codes with one click
 - Download palette as JSON or PNG
 - Responsive design
