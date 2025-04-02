@@ -20,7 +20,7 @@ export function Header() {
           {/* Right side content - can add more items later */}
           <div className="flex items-center space-x-4">
             <a
-              href="https://github.com/yourusername/colorlens"
+              href="https://github.com/yonnytan/ColorLensSite"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-gray-400 hover:text-white transition-colors"
