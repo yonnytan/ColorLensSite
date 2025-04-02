@@ -21,19 +21,6 @@ A modern web application that extracts color palettes from images. Built with Re
 - HTML2Canvas
 - Heroicons
 
-## Getting Started
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-4. Open your browser and navigate to the URL shown in the terminal
-
 ## Usage
 
 1. Drag and drop an image or click to select one
