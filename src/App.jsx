@@ -29,6 +29,7 @@ import { TabSelector } from "./components/common/TabSelector";
 import { ColorPicker } from "./components/picker/ColorPicker";
 import { ImageGenerator } from "./components/picker/ImageGenerator";
 import { Header } from "./components/common/Header";
+import { Favicon } from "./components/common/Favicon";
 
 // Utility function to determine text color based on background
 const getContrastColor = (hexcolor) => {
@@ -1027,6 +1028,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[var(--clay-background)]">
+      <Favicon />
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <PaletteProvider>
