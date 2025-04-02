@@ -431,6 +431,29 @@ export function ColorPicker({
     }
   };
 
+  const handleColorHover = (color, index) => {
+    setHoveredColor(`${color}-${index}`);
+
+    // Adjust the expansion ratio based on the number of colors
+    const baseWidth = 100 / gradientColors.length;
+
+    // Use a smaller expansion ratio when there are more colors
+    const expansionRatio = gradientColors.length > 5 ? 1.5 : 2.5;
+    const expandedWidth = baseWidth * expansionRatio;
+
+    // Ensure the remaining width is distributed properly
+    const remainingWidth = (100 - expandedWidth) / (gradientColors.length - 1);
+
+    const newWidths = {};
+    gradientColors.forEach((c, i) => {
+      const key = `${c.color}-${i}`;
+      newWidths[key] =
+        `${c.color}-${i}` === key ? expandedWidth : remainingWidth;
+    });
+
+    setColorWidths(newWidths);
+  };
+
   return (
     <div className="space-y-4">
       {/* Main container */}

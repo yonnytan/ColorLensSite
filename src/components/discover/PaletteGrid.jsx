@@ -7,6 +7,7 @@ export function PaletteGrid({
   selectedColor,
   selectedCategory,
   sortBy,
+  colorCount,
 }) {
   const { filteredPalettes } = usePalette();
 
@@ -16,7 +17,8 @@ export function PaletteGrid({
     searchTerm,
     selectedColor,
     selectedCategory,
-    sortBy
+    sortBy,
+    colorCount
   );
 
   return (

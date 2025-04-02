@@ -5,27 +5,50 @@ import { filterByCategory, filterByColor, sortPalettes } from '../utils/filterUt
 const PaletteContext = createContext();
 
 export function PaletteProvider({ children }) {
-  const [savedPalettes, setSavedPalettes] = useState([]);
+  // Separate state for generator palettes and discover palettes
+  const [generatorPalettes, setGeneratorPalettes] = useState([]);
+  const [discoverPalettes, setDiscoverPalettes] = useState([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedPaletteName, setSavedPaletteName] = useState("");
 
   // Load saved palettes from localStorage on initial render
   useEffect(() => {
-    const storedPalettes = localStorage.getItem("savedPalettes");
-    if (storedPalettes) {
-      setSavedPalettes(JSON.parse(storedPalettes));
+    const storedGeneratorPalettes = localStorage.getItem("generatorPalettes");
+    if (storedGeneratorPalettes) {
+      setGeneratorPalettes(JSON.parse(storedGeneratorPalettes));
+    }
+    
+    const storedDiscoverPalettes = localStorage.getItem("discoverPalettes");
+    if (storedDiscoverPalettes) {
+      setDiscoverPalettes(JSON.parse(storedDiscoverPalettes));
     }
   }, []);
 
   // Save palettes to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem("savedPalettes", JSON.stringify(savedPalettes));
-  }, [savedPalettes]);
+    localStorage.setItem("generatorPalettes", JSON.stringify(generatorPalettes));
+  }, [generatorPalettes]);
+  
+  useEffect(() => {
+    localStorage.setItem("discoverPalettes", JSON.stringify(discoverPalettes));
+  }, [discoverPalettes]);
 
-  const handleSavePalette = (palette) => {
+  // For backward compatibility - keep the old savedPalettes getter
+  const savedPalettes = generatorPalettes;
+
+  const handleSaveGeneratorPalette = (palette) => {
     // Check if palette already exists
-    if (!isPaletteSaved(palette)) {
-      setSavedPalettes([...savedPalettes, palette]);
+    if (!isGeneratorPaletteSaved(palette)) {
+      setGeneratorPalettes([...generatorPalettes, palette]);
+    }
+    setSavedPaletteName(palette.name || "Palette");
+    setShowSaveModal(true);
+  };
+  
+  const handleSaveDiscoverPalette = (palette) => {
+    // Check if palette already exists
+    if (!isDiscoverPaletteSaved(palette)) {
+      setDiscoverPalettes([...discoverPalettes, palette]);
     }
     setSavedPaletteName(palette.name || "Palette");
     setShowSaveModal(true);
@@ -35,34 +58,67 @@ export function PaletteProvider({ children }) {
     setShowSaveModal(false);
   };
 
-  const handleUpdatePalettes = (updatedPalettes) => {
-    setSavedPalettes(updatedPalettes);
+  const handleUpdateGeneratorPalettes = (updatedPalettes) => {
+    setGeneratorPalettes(updatedPalettes);
+  };
+  
+  const handleUpdateDiscoverPalettes = (updatedPalettes) => {
+    setDiscoverPalettes(updatedPalettes);
   };
 
-  const isPaletteSaved = (palette) => {
-    return savedPalettes.some(
+  const isGeneratorPaletteSaved = (palette) => {
+    return generatorPalettes.some(
+      (savedPalette) =>
+        JSON.stringify(savedPalette.colors) === JSON.stringify(palette.colors)
+    );
+  };
+  
+  const isDiscoverPaletteSaved = (palette) => {
+    return discoverPalettes.some(
       (savedPalette) =>
         JSON.stringify(savedPalette.colors) === JSON.stringify(palette.colors)
     );
   };
 
-  const handleRemovePalette = (palette) => {
-    setSavedPalettes(savedPalettes.filter(p => 
+  const handleRemoveGeneratorPalette = (palette) => {
+    setGeneratorPalettes(generatorPalettes.filter(p => 
+      // Compare by name and colors to identify the palette
+      !(p.name === palette.name && 
+        JSON.stringify(p.colors) === JSON.stringify(palette.colors))
+    ));
+  };
+  
+  const handleRemoveDiscoverPalette = (palette) => {
+    setDiscoverPalettes(discoverPalettes.filter(p => 
       // Compare by name and colors to identify the palette
       !(p.name === palette.name && 
         JSON.stringify(p.colors) === JSON.stringify(palette.colors))
     ));
   };
 
-  const filteredPalettes = (palettes, searchTerm, selectedColor, selectedCategory, sortBy) => {
-    let filtered = [...palettes];
+  // Add this function to filter palettes by color count
+  const filterByColorCount = (palettes, colorCount) => {
+    if (colorCount === 'all') {
+      return palettes;
+    }
+    
+    const count = parseInt(colorCount, 10);
+    return palettes.filter(palette => palette.colors.length === count);
+  };
 
+  // Update the filteredPalettes function to include color count filtering
+  const filteredPalettes = (palettes, searchTerm, selectedColor, selectedCategory, sortBy, colorCount) => {
+    let filtered = [...palettes];
+    
     // Apply color filter
     filtered = filterByColor(filtered, selectedColor);
-
+    
     // Apply category filter
     filtered = filterByCategory(filtered, selectedCategory);
-
+    
+    // Apply color count filter
+    filtered = filterByColorCount(filtered, colorCount);
+    
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(
@@ -73,25 +129,44 @@ export function PaletteProvider({ children }) {
           )
       );
     }
-
+    
     // Apply sort
     filtered = sortPalettes(filtered, sortBy);
-
+    
     return filtered;
   };
 
   const value = {
+    // For backward compatibility
     savedPalettes,
-    setSavedPalettes,
+    setSavedPalettes: setGeneratorPalettes,
+    
+    // New separate palette lists
+    generatorPalettes,
+    setGeneratorPalettes,
+    discoverPalettes,
+    setDiscoverPalettes,
+    
+    // Modal state
     showSaveModal,
     setShowSaveModal,
     savedPaletteName,
     setSavedPaletteName,
-    handleSavePalette,
-    isPaletteSaved,
-    handleUpdatePalettes,
+    
+    // Handler functions
+    handleSavePalette: handleSaveGeneratorPalette, // For backward compatibility
+    handleSaveGeneratorPalette,
+    handleSaveDiscoverPalette,
+    isPaletteSaved: isGeneratorPaletteSaved, // For backward compatibility
+    isGeneratorPaletteSaved,
+    isDiscoverPaletteSaved,
+    handleUpdatePalettes: handleUpdateGeneratorPalettes, // For backward compatibility
+    handleUpdateGeneratorPalettes,
+    handleUpdateDiscoverPalettes,
+    handleRemovePalette: handleRemoveGeneratorPalette, // For backward compatibility
+    handleRemoveGeneratorPalette,
+    handleRemoveDiscoverPalette,
     filteredPalettes,
-    handleRemovePalette,
     handleCloseSaveModal,
   };
 

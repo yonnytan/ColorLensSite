@@ -90,30 +90,31 @@ const hexToHSL = (hex) => {
 // Add this function before the App component
 function ensureUniquePaletteNames(palettes) {
   const nameCount = {};
-  
+
   // First pass: count occurrences of each name
-  palettes.forEach(palette => {
+  palettes.forEach((palette) => {
     const name = palette.name || "Unnamed Palette";
     nameCount[name] = (nameCount[name] || 0) + 1;
   });
-  
+
   // Second pass: rename duplicates
-  return palettes.map(palette => {
+  return palettes.map((palette) => {
     const originalName = palette.name || "Unnamed Palette";
-    
+
     // If this is a duplicate name (count > 1), we need to make it unique
     if (nameCount[originalName] > 1) {
       // Decrease the count for this name
       nameCount[originalName]--;
-      
+
       // Add a suffix to make the name unique
-      const suffix = nameCount[originalName] > 0 ? ` (${nameCount[originalName]})` : '';
+      const suffix =
+        nameCount[originalName] > 0 ? ` (${nameCount[originalName]})` : "";
       return {
         ...palette,
-        name: `${originalName}${suffix}`
+        name: `${originalName}${suffix}`,
       };
     }
-    
+
     return palette;
   });
 }
@@ -121,7 +122,7 @@ function ensureUniquePaletteNames(palettes) {
 function App() {
   const [image, setImage] = useState(null);
   const [dots, setDots] = useState([]);
-  const [colorCount, setColorCount] = useState(5);
+  const [colorCount, setColorCount] = useState("all");
   const [hoveredDot, setHoveredDot] = useState(null);
   const [showCopiedNotification, setShowCopiedNotification] = useState(false);
   const [copiedText, setCopiedText] = useState("");
@@ -1018,7 +1019,9 @@ function App() {
   // Add this to ensure unique palette names when the component mounts
   useEffect(() => {
     // Process the palettes to ensure unique names
-    const processedPalettes = ensureUniquePaletteNames(coolors_palettes.palettes);
+    const processedPalettes = ensureUniquePaletteNames(
+      coolors_palettes.palettes
+    );
     setUniquePalettes(processedPalettes);
   }, []);
 
@@ -1059,6 +1062,8 @@ function App() {
                 setSelectedCategory={setSelectedCategory}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
+                colorCount={colorCount}
+                setColorCount={setColorCount}
                 handleSavedPalettesToggle={handleSavedPalettesToggle}
               />
               <PaletteGrid
@@ -1067,6 +1072,7 @@ function App() {
                 selectedColor={selectedColor}
                 selectedCategory={selectedCategory}
                 sortBy={sortBy}
+                colorCount={colorCount}
               />
               {showSavedPalettes && (
                 <div

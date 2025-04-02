@@ -6,7 +6,7 @@ export function SavedPalettes({
   showSavedPalettes,
   handleSavedPalettesToggle,
 }) {
-  const { savedPalettes } = usePalette();
+  const { discoverPalettes } = usePalette();
 
   if (!showSavedPalettes) return null;
 
@@ -23,15 +23,10 @@ export function SavedPalettes({
           </button>
         </div>
 
-        <div className="space-y-4">
-          {savedPalettes.length > 0 ? (
-            <div
-              className="grid grid-cols-1 gap-4 overflow-y-auto pr-1 custom-scrollbar pt-1 mt-1 mb-6"
-              style={{
-                maxHeight: "calc(100vh - 120px)",
-              }}
-            >
-              {savedPalettes.map((palette, index) => (
+        <div className="mt-4">
+          {discoverPalettes.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4">
+              {discoverPalettes.map((palette, index) => (
                 <PaletteCard
                   key={`saved-${palette.name}-${index}`}
                   palette={palette}

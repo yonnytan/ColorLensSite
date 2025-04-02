@@ -1,10 +1,6 @@
 {
   "palettes": [
     {
-      "name": "three man",
-      "colors": ["#001F3F", "#17A2B8", "#E0F7FA"]
-    },
-    {
       "name": "Ocean Breeze",
       "colors": ["#001F3F", "#17A2B8", "#7FDBFF", "#B2EBF2", "#E0F7FA"]
     },

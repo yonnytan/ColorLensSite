@@ -73,10 +73,26 @@ export function ImageGenerator({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [paletteToDelete, setPaletteToDelete] = useState(null);
 
+  // Add this state to track the hovered color
+  const [hoveredColorIndex, setHoveredColorIndex] = useState(null);
+
   useEffect(() => {
-    console.log("Image state:", image);
-    console.log("Image dimensions:", imageDimensions);
-  }, [image, imageDimensions]);
+    // Remove any debugger statements or console.log statements
+    // For example, if there are lines like:
+    // debugger;
+    // console.log("some debug message");
+    // Also check for any temporary debugging UI elements that might be showing
+    // For example, if there's a debugging div showing state values:
+    // <div className="debug-info">
+    //   {JSON.stringify(dots, null, 2)}
+    // </div>
+    // Since I don't see the specific debugger in the code snippets,
+    // I recommend searching your codebase for:
+    // - debugger;
+    // - console.log
+    // - debug-info
+    // - any other debugging patterns you might be using
+  }, []);
 
   useEffect(() => {
     if (image && imageRef.current) {
@@ -1054,64 +1070,64 @@ export function ImageGenerator({
                       Generated Palette
                     </h3>
                     <div
-                      className="flex-1 rounded-xl overflow-hidden shadow-xl"
-                      style={{ height: "200px", maxHeight: "300px" }}
+                      className="flex rounded-lg overflow-hidden shadow-lg"
+                      style={{ height: "320px" }}
                     >
-                      <div className="flex h-60 lg:h-72 w-full relative">
-                        {dots.map((dot, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-center relative transition-all duration-200 group active:scale-95 active:brightness-90"
+                      {dots.map((dot, i) => (
+                        <div
+                          key={i}
+                          className="relative group transition-all duration-300 ease-in-out"
+                          style={{
+                            backgroundColor: dot.color,
+                            flex: hoveredColorIndex === i ? "3" : "1",
+                            height: "100%",
+                          }}
+                          onMouseEnter={() => setHoveredColorIndex(i)}
+                          onMouseLeave={() => setHoveredColorIndex(null)}
+                          onClick={() => {
+                            navigator.clipboard.writeText(dot.color);
+                            setNotificationMessage(`Copied ${dot.color}`);
+                            setShowCopiedNotification(true);
+                            setTimeout(
+                              () => setShowCopiedNotification(false),
+                              2000
+                            );
+                          }}
+                        >
+                          {/* Number (visible when not hovered) */}
+                          <span
+                            className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${
+                              hoveredColorIndex === i
+                                ? "opacity-0"
+                                : "opacity-100"
+                            } transition-opacity duration-200`}
                             style={{
-                              backgroundColor: dot.color,
-                              position: "relative",
-                              zIndex: draggedDot === index ? 10 : 1,
-                              transform:
-                                draggedDot === index
-                                  ? "scale(1.08)"
-                                  : "scale(1)",
-                              boxShadow:
-                                draggedDot === index
-                                  ? "0 8px 16px rgba(0,0,0,0.3)"
-                                  : "none",
-                              width: `${100 / dots.length}%`, // Divide width evenly based on number of colors
-                              transition: "all 0.2s ease-in-out",
-                            }}
-                            onClick={() => {
-                              navigator.clipboard.writeText(dot.color);
-                              setNotificationMessage(`Copied ${dot.color}`);
-                              setShowCopiedNotification(true);
-                              setTimeout(
-                                () => setShowCopiedNotification(false),
-                                2000
-                              );
+                              color: getContrastColor(dot.color),
                             }}
                           >
-                            {/* Number (visible by default) */}
+                            {i + 1}
+                          </span>
+
+                          {/* Color value (visible on hover) */}
+                          <div
+                            className={`absolute inset-0 flex items-center justify-center ${
+                              hoveredColorIndex === i
+                                ? "opacity-100"
+                                : "opacity-0"
+                            } transition-opacity duration-200`}
+                          >
                             <span
-                              className="text-lg lg:text-xl font-bold group-hover:opacity-0 transition-opacity"
+                              className="text-sm font-mono font-semibold"
                               style={{
                                 color: getContrastColor(dot.color),
+                                textShadow: "0px 0px 3px rgba(0,0,0,0.3)",
                               }}
                             >
-                              {index + 1}
+                              {dot.color.toUpperCase()}
                             </span>
-
-                            {/* Color value (visible on hover) */}
-                            <div
-                              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                              style={{ backgroundColor: `${dot.color}CC` }}
-                            >
-                              <span
-                                className="text-xs lg:text-sm font-mono"
-                                style={{ color: getContrastColor(dot.color) }}
-                              >
-                                {dot.color.toUpperCase()}
-                              </span>
-                            </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1718,105 +1734,6 @@ export function ImageGenerator({
         <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
           {notificationMessage}
         </div>
-      )}
-
-      {/* Position Debug Button - Add this near the bottom of your component */}
-      <button
-        className="fixed bottom-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-lg text-xs z-50 opacity-70"
-        onClick={togglePositionDebug}
-      >
-        {showPositionDebug ? "Hide Debug" : "Show Debug"}
-      </button>
-
-      {/* Position Debug Display */}
-      {showPositionDebug && (
-        <div className="fixed top-4 left-4 bg-black bg-opacity-80 text-white p-3 rounded-lg text-xs z-50 max-w-xs">
-          <h3 className="font-bold mb-2">Position Debug</h3>
-          <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-            <div>Magnifier X:</div>
-            <div>{Math.round(magnifierPosition.x)}</div>
-
-            <div>Magnifier Y:</div>
-            <div>{Math.round(magnifierPosition.y)}</div>
-
-            <div>Last Valid X:</div>
-            <div>{Math.round(lastValidPosition.x)}</div>
-
-            <div>Last Valid Y:</div>
-            <div>{Math.round(lastValidPosition.y)}</div>
-
-            <div>Last Valid %X:</div>
-            <div>{Math.round(lastValidPosition.percentX)}%</div>
-
-            <div>Last Valid %Y:</div>
-            <div>{Math.round(lastValidPosition.percentY)}%</div>
-
-            <div>Dragged Dot:</div>
-            <div>{draggedDot !== null ? draggedDot + 1 : "None"}</div>
-
-            <div>Is Mobile:</div>
-            <div>{window.innerWidth <= 768 ? "Yes" : "No"}</div>
-
-            {draggedDot !== null && dots[draggedDot] && (
-              <>
-                <div>Dot X:</div>
-                <div>{Math.round(dots[draggedDot].x)}%</div>
-
-                <div>Dot Y:</div>
-                <div>{Math.round(dots[draggedDot].y)}%</div>
-
-                <div>Dot Color:</div>
-                <div
-                  style={{
-                    backgroundColor: dots[draggedDot].color || "#000000",
-                    color: getContrastColor(
-                      dots[draggedDot].color || "#000000"
-                    ),
-                    padding: "2px 4px",
-                    borderRadius: "2px",
-                  }}
-                >
-                  {dots[draggedDot].color || "N/A"}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Visual position indicators for debugging */}
-      {showPositionDebug && isDragging && window.innerWidth <= 768 && (
-        <>
-          {/* Original touch position indicator (red circle) */}
-          <div
-            className="absolute w-4 h-4 rounded-full border-2 border-red-500 pointer-events-none z-40"
-            style={{
-              left: `${lastValidPosition.percentX}%`,
-              top: `${lastValidPosition.percentY}%`,
-              transform: "translate(-50%, -50%)",
-            }}
-          />
-
-          {/* Magnifier center position indicator (blue circle) */}
-          <div
-            className="absolute w-4 h-4 rounded-full border-2 border-blue-500 pointer-events-none z-40"
-            style={{
-              left: `${
-                ((magnifierPosition.x -
-                  imageRef.current?.getBoundingClientRect().left || 0) /
-                  (imageRef.current?.getBoundingClientRect().width || 1)) *
-                100
-              }%`,
-              top: `${
-                ((magnifierPosition.y -
-                  imageRef.current?.getBoundingClientRect().top || 0) /
-                  (imageRef.current?.getBoundingClientRect().height || 1)) *
-                100
-              }%`,
-              transform: "translate(-50%, -50%)",
-            }}
-          />
-        </>
       )}
 
       {/* Add the ConfirmationModal at the end */}

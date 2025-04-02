@@ -11,8 +11,11 @@ import { useState, useEffect } from "react";
 import { ConfirmationModal } from "../common/ConfirmationModal";
 
 export function PaletteCard({ palette, index, isSaved = false }) {
-  const { handleSavePalette, isPaletteSaved, handleRemovePalette } =
-    usePalette();
+  const {
+    isDiscoverPaletteSaved,
+    handleSaveDiscoverPalette,
+    handleRemoveDiscoverPalette,
+  } = usePalette();
   const [showCopiedNotification, setShowCopiedNotification] = useState(false);
   const [copiedText, setCopiedText] = useState("");
   const [colorScales, setColorScales] = useState({});
@@ -125,18 +128,20 @@ export function PaletteCard({ palette, index, isSaved = false }) {
           </button>
           <button
             onClick={() => {
-              if (isPaletteSaved(palette)) {
-                setShowUnsaveConfirmation(true);
+              if (isDiscoverPaletteSaved(palette)) {
+                handleRemoveDiscoverPalette(palette);
               } else {
-                handleSavePalette(palette);
+                handleSaveDiscoverPalette(palette);
               }
             }}
             className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
             title={
-              isPaletteSaved(palette) ? "Remove from Saved" : "Save Palette"
+              isDiscoverPaletteSaved(palette)
+                ? "Remove from Saved"
+                : "Save Palette"
             }
           >
-            {isPaletteSaved(palette) ? (
+            {isDiscoverPaletteSaved(palette) ? (
               <HeartIconSolid className="w-5 h-5 text-red-500" />
             ) : (
               <HeartIcon className="w-5 h-5" />
@@ -201,7 +206,7 @@ export function PaletteCard({ palette, index, isSaved = false }) {
       <ConfirmationModal
         isOpen={showDeleteConfirmation}
         onClose={() => setShowDeleteConfirmation(false)}
-        onConfirm={() => handleRemovePalette(palette)}
+        onConfirm={() => handleRemoveDiscoverPalette(palette)}
         title="Remove Palette"
         message={`Are you sure you want to remove "${
           palette.name || `Palette ${index + 1}`
@@ -214,7 +219,7 @@ export function PaletteCard({ palette, index, isSaved = false }) {
         isOpen={showUnsaveConfirmation}
         onClose={() => setShowUnsaveConfirmation(false)}
         onConfirm={() => {
-          handleRemovePalette(palette);
+          handleRemoveDiscoverPalette(palette);
           setCopiedText("Palette removed");
           setShowCopiedNotification(true);
           setTimeout(() => setShowCopiedNotification(false), 2000);
