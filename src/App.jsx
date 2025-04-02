@@ -9,7 +9,26 @@ import {
   CheckCircleIcon,
   SwatchIcon,
   ChevronDownIcon,
+  SparklesIcon,
+  HeartIcon,
+  ChevronUpIcon,
+  EllipsisVerticalIcon,
+  ClipboardIcon,
+  ArrowDownTrayIcon,
+  PencilIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
+import { HeartIcon as HeartIconSolid } from "@heroicons/react/24/solid";
+import coolors_palettes from "./data/coolors_palettes.json";
+import { PaletteProvider } from "./context/PaletteContext";
+import { DiscoverFilters } from "./components/discover/DiscoverFilters";
+import { PaletteGrid } from "./components/discover/PaletteGrid";
+import { SavedPalettes } from "./components/discover/SavedPalettes";
+import { SaveModal } from "./components/common/SaveModal";
+import { TabSelector } from "./components/common/TabSelector";
+import { ColorPicker } from "./components/picker/ColorPicker";
+import { ImageGenerator } from "./components/picker/ImageGenerator";
+import { Header } from "./components/common/Header";
 
 // Utility function to determine text color based on background
 const getContrastColor = (hexcolor) => {
@@ -28,6 +47,77 @@ const getContrastColor = (hexcolor) => {
   return luminance > 0.5 ? "#000000" : "#ffffff";
 };
 
+// Add these helper functions for color analysis
+const hexToHSL = (hex) => {
+  hex = hex.replace("#", "");
+  let r = parseInt(hex.substr(0, 2), 16) / 255;
+  let g = parseInt(hex.substr(2, 2), 16) / 255;
+  let b = parseInt(hex.substr(4, 2), 16) / 255;
+
+  let max = Math.max(r, g, b);
+  let min = Math.min(r, g, b);
+  let h,
+    s,
+    l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0; // achromatic
+  } else {
+    let d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  return {
+    h: h * 360,
+    s: s * 100,
+    l: l * 100,
+  };
+};
+
+// Add this function before the App component
+function ensureUniquePaletteNames(palettes) {
+  const nameCount = {};
+  
+  // First pass: count occurrences of each name
+  palettes.forEach(palette => {
+    const name = palette.name || "Unnamed Palette";
+    nameCount[name] = (nameCount[name] || 0) + 1;
+  });
+  
+  // Second pass: rename duplicates
+  return palettes.map(palette => {
+    const originalName = palette.name || "Unnamed Palette";
+    
+    // If this is a duplicate name (count > 1), we need to make it unique
+    if (nameCount[originalName] > 1) {
+      // Decrease the count for this name
+      nameCount[originalName]--;
+      
+      // Add a suffix to make the name unique
+      const suffix = nameCount[originalName] > 0 ? ` (${nameCount[originalName]})` : '';
+      return {
+        ...palette,
+        name: `${originalName}${suffix}`
+      };
+    }
+    
+    return palette;
+  });
+}
+
 function App() {
   const [image, setImage] = useState(null);
   const [dots, setDots] = useState([]);
@@ -37,7 +127,7 @@ function App() {
   const [copiedText, setCopiedText] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [draggedDot, setDraggedDot] = useState(null);
-  const [selectedColor, setSelectedColor] = useState("#000000");
+  const [selectedColor, setSelectedColor] = useState("all");
   const [savedColors, setSavedColors] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
@@ -52,7 +142,17 @@ function App() {
   const containerRef = useRef(null);
   const downloadMenuRef = useRef(null);
   const gradientRef = useRef(null);
-  const [activeTab, setActiveTab] = useState("picker"); // 'picker' or 'generator'
+  const [activeTab, setActiveTab] = useState("picker"); // 'picker' or 'generator' or 'discover'
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("default");
+  const [savedPalettes, setSavedPalettes] = useState([]);
+  const [showSavedPalettes, setShowSavedPalettes] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [savedPaletteName, setSavedPaletteName] = useState("");
+  const [colorPickerValue, setColorPickerValue] = useState("#000000");
+  const [uniquePalettes, setUniquePalettes] = useState([]);
 
   const getPixelColor = useCallback((x, y, containerRect, imgRect) => {
     const canvas = canvasRef.current;
@@ -89,13 +189,6 @@ function App() {
     const canvas = canvasRef.current;
     const imgRect = img.getBoundingClientRect();
 
-    console.log("Image dimensions:", {
-      width: imgRect.width,
-      height: imgRect.height,
-      naturalWidth: img.naturalWidth,
-      naturalHeight: img.naturalHeight,
-    });
-
     // Wait for valid dimensions
     if (imgRect.width === 0 || imgRect.height === 0) {
       console.log("Invalid image dimensions, retrying in 100ms");
@@ -103,161 +196,158 @@ function App() {
       return;
     }
 
-    // Calculate the scale factor between displayed and natural image size
     const scaleX = canvas.width / imgRect.width;
     const scaleY = canvas.height / imgRect.height;
 
-    // Create a grid to track occupied areas
-    const gridSize = 50; // Size of each grid cell in pixels
-    const gridWidth = Math.ceil(imgRect.width / gridSize);
-    const gridHeight = Math.ceil(imgRect.height / gridSize);
-    const minDistance = 40; // Minimum distance between dots in pixels
+    // Divide the image into sections based on colorCount
+    const sections = {
+      rows: Math.ceil(Math.sqrt(colorCount)),
+      cols: Math.ceil(Math.sqrt(colorCount)),
+    };
 
-    // Ensure grid dimensions are valid
-    if (gridWidth <= 0 || gridHeight <= 0) {
-      console.log("Invalid grid dimensions");
-      return;
-    }
-
-    const grid = Array(gridHeight)
-      .fill()
-      .map(() => Array(gridWidth).fill(false));
+    // Calculate section dimensions
+    const sectionWidth = imgRect.width / sections.cols;
+    const sectionHeight = imgRect.height / sections.rows;
 
     const newDots = [];
     let attempts = 0;
-    const maxAttempts = 200;
+    const maxAttempts = 500; // Increased max attempts
 
-    while (newDots.length < colorCount && attempts < maxAttempts) {
-      // Generate random position within the image boundaries
-      const displayX = Math.random() * imgRect.width;
-      const displayY = Math.random() * imgRect.height;
+    // Try to place one dot in each section first
+    for (
+      let row = 0;
+      row < sections.rows && newDots.length < colorCount;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < sections.cols && newDots.length < colorCount;
+        col++
+      ) {
+        let dotPlaced = false;
+        let sectionAttempts = 0;
 
-      // Convert to grid coordinates
-      const gridX = Math.floor(displayX / gridSize);
-      const gridY = Math.floor(displayY / gridSize);
+        while (!dotPlaced && sectionAttempts < 20) {
+          // Generate position within this section
+          const displayX =
+            col * sectionWidth +
+            (Math.random() * sectionWidth * 0.8 + sectionWidth * 0.1);
+          const displayY =
+            row * sectionHeight +
+            (Math.random() * sectionHeight * 0.8 + sectionHeight * 0.1);
 
-      // Check if grid coordinates are valid
-      if (gridX < 0 || gridX >= gridWidth || gridY < 0 || gridY >= gridHeight) {
-        attempts++;
-        continue;
-      }
-
-      // Check if this grid cell and adjacent cells are occupied
-      let isSpaceAvailable = true;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const checkX = gridX + dx;
-          const checkY = gridY + dy;
-          if (
-            checkX >= 0 &&
-            checkX < gridWidth &&
-            checkY >= 0 &&
-            checkY < gridHeight &&
-            grid[checkY][checkX]
-          ) {
-            isSpaceAvailable = false;
-            break;
-          }
-        }
-        if (!isSpaceAvailable) break;
-      }
-
-      if (isSpaceAvailable) {
-        // Check minimum distance from all existing dots
-        const isTooClose = newDots.some((existingDot) => {
-          const dx = existingDot.x - displayX;
-          const dy = existingDot.y - displayY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          return distance < minDistance;
-        });
-
-        if (!isTooClose) {
-          // Convert display coordinates to canvas coordinates for color sampling
-          const canvasX = displayX * scaleX;
-          const canvasY = displayY * scaleY;
-
-          const color = getPixelColor(canvasX, canvasY);
-          if (color && color.hex !== "#000000") {
-            // Check for color similarity with existing dots
-            const isDuplicate = newDots.some((existingDot) => {
-              // Then check for color similarity
-              const hexA = existingDot.hex.substring(1);
-              const hexB = color.hex.substring(1);
-              const rgbA = {
-                r: parseInt(hexA.substring(0, 2), 16),
-                g: parseInt(hexA.substring(2, 4), 16),
-                b: parseInt(hexA.substring(4, 6), 16),
-              };
-              const rgbB = {
-                r: parseInt(hexB.substring(0, 2), 16),
-                g: parseInt(hexB.substring(2, 4), 16),
-                b: parseInt(hexB.substring(4, 6), 16),
-              };
-              const diff = Math.sqrt(
-                Math.pow(rgbA.r - rgbB.r, 2) +
-                  Math.pow(rgbA.g - rgbB.g, 2) +
-                  Math.pow(rgbA.b - rgbB.b, 2)
-              );
-              return diff < 30;
-            });
-
-            if (!isDuplicate) {
-              // Mark the grid cell as occupied
-              grid[gridY][gridX] = true;
-              newDots.push({
-                x: displayX,
-                y: displayY,
-                ...color,
-              });
-            }
-          }
-        }
-      }
-      attempts++;
-    }
-
-    // If we don't have enough dots and we have at least one dot, try to fill remaining spots
-    if (newDots.length < colorCount && newDots.length > 0) {
-      const remainingCount = colorCount - newDots.length;
-      for (let i = 0; i < remainingCount; i++) {
-        const baseIndex = i % newDots.length;
-        const baseDot = newDots[baseIndex];
-
-        // Try to find a valid position that maintains minimum distance
-        let validPosition = false;
-        let tryCount = 0;
-        let x, y;
-
-        while (!validPosition && tryCount < 20) {
-          // Add a dot with an offset from an existing one
-          const offsetX = (Math.random() - 0.5) * gridSize * 3;
-          const offsetY = (Math.random() - 0.5) * gridSize * 3;
-
-          x = Math.max(0, Math.min(imgRect.width, baseDot.x + offsetX));
-          y = Math.max(0, Math.min(imgRect.height, baseDot.y + offsetY));
-
-          // Check distance from all existing dots
+          // Check minimum distance from all existing dots
+          const minDistance = Math.min(sectionWidth, sectionHeight) * 0.3; // Dynamic minimum distance
           const isTooClose = newDots.some((existingDot) => {
-            const dx = existingDot.x - x;
-            const dy = existingDot.y - y;
+            const dx = existingDot.x - displayX;
+            const dy = existingDot.y - displayY;
             const distance = Math.sqrt(dx * dx + dy * dy);
             return distance < minDistance;
           });
 
           if (!isTooClose) {
-            validPosition = true;
-          }
-          tryCount++;
-        }
+            // Convert display coordinates to canvas coordinates for color sampling
+            const canvasX = displayX * scaleX;
+            const canvasY = displayY * scaleY;
 
-        if (validPosition) {
-          newDots.push({
-            x,
-            y,
-            ...baseDot, // Use the same color as the base dot
-          });
+            const color = getPixelColor(canvasX, canvasY);
+            if (color && color.hex !== "#000000") {
+              // Check for color similarity
+              const isDuplicate = newDots.some((existingDot) => {
+                const hexA = existingDot.hex.substring(1);
+                const hexB = color.hex.substring(1);
+                const rgbA = {
+                  r: parseInt(hexA.substring(0, 2), 16),
+                  g: parseInt(hexA.substring(2, 4), 16),
+                  b: parseInt(hexA.substring(4, 6), 16),
+                };
+                const rgbB = {
+                  r: parseInt(hexB.substring(0, 2), 16),
+                  g: parseInt(hexB.substring(2, 4), 16),
+                  b: parseInt(hexB.substring(4, 6), 16),
+                };
+                const diff = Math.sqrt(
+                  Math.pow(rgbA.r - rgbB.r, 2) +
+                    Math.pow(rgbA.g - rgbB.g, 2) +
+                    Math.pow(rgbA.b - rgbB.b, 2)
+                );
+                return diff < 30;
+              });
+
+              if (!isDuplicate) {
+                newDots.push({
+                  x: displayX,
+                  y: displayY,
+                  ...color,
+                });
+                dotPlaced = true;
+              }
+            }
+          }
+          sectionAttempts++;
         }
       }
+    }
+
+    // If we still need more dots, fill remaining spaces
+    while (newDots.length < colorCount && attempts < maxAttempts) {
+      const section = {
+        col: Math.floor(Math.random() * sections.cols),
+        row: Math.floor(Math.random() * sections.rows),
+      };
+
+      const displayX =
+        section.col * sectionWidth +
+        (Math.random() * sectionWidth * 0.8 + sectionWidth * 0.1);
+      const displayY =
+        section.row * sectionHeight +
+        (Math.random() * sectionHeight * 0.8 + sectionHeight * 0.1);
+
+      const minDistance = Math.min(sectionWidth, sectionHeight) * 0.3;
+      const isTooClose = newDots.some((existingDot) => {
+        const dx = existingDot.x - displayX;
+        const dy = existingDot.y - displayY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance < minDistance;
+      });
+
+      if (!isTooClose) {
+        const canvasX = displayX * scaleX;
+        const canvasY = displayY * scaleY;
+
+        const color = getPixelColor(canvasX, canvasY);
+        if (color && color.hex !== "#000000") {
+          const isDuplicate = newDots.some((existingDot) => {
+            const hexA = existingDot.hex.substring(1);
+            const hexB = color.hex.substring(1);
+            const rgbA = {
+              r: parseInt(hexA.substring(0, 2), 16),
+              g: parseInt(hexA.substring(2, 4), 16),
+              b: parseInt(hexA.substring(4, 6), 16),
+            };
+            const rgbB = {
+              r: parseInt(hexB.substring(0, 2), 16),
+              g: parseInt(hexB.substring(2, 4), 16),
+              b: parseInt(hexB.substring(4, 6), 16),
+            };
+            const diff = Math.sqrt(
+              Math.pow(rgbA.r - rgbB.r, 2) +
+                Math.pow(rgbA.g - rgbB.g, 2) +
+                Math.pow(rgbA.b - rgbB.b, 2)
+            );
+            return diff < 30;
+          });
+
+          if (!isDuplicate) {
+            newDots.push({
+              x: displayX,
+              y: displayY,
+              ...color,
+            });
+          }
+        }
+      }
+      attempts++;
     }
 
     setDots(newDots);
@@ -312,49 +402,10 @@ function App() {
     });
   }, [generateRandomDots]);
 
-  const onDrop = useCallback(
-    (acceptedFiles) => {
-      console.log("File drop detected", acceptedFiles);
-      const file = acceptedFiles[0];
-      if (file) {
-        console.log("Processing file:", file.name);
-        setIsLoading(true);
-        setDots([]);
-
-        const reader = new FileReader();
-        reader.onload = () => {
-          console.log("File read complete");
-          // Update the image state first
-          setImage(reader.result);
-
-          // Let React render cycle complete before proceeding
-          setTimeout(() => {
-            if (imageRef.current) {
-              // Wait for the image to be fully loaded
-              const checkImage = () => {
-                if (imageRef.current.complete) {
-                  console.log("Image fully loaded, proceeding with processing");
-                  handleImageLoad();
-                } else {
-                  console.log("Image not loaded yet, waiting...");
-                  setTimeout(checkImage, 100);
-                }
-              };
-              checkImage();
-            }
-          }, 100);
-        };
-
-        reader.onerror = (error) => {
-          console.error("Error reading file:", error);
-          setIsLoading(false);
-        };
-
-        reader.readAsDataURL(file);
-      }
-    },
-    [handleImageLoad]
-  );
+  const onDrop = useCallback((acceptedFiles) => {
+    const file = acceptedFiles[0];
+    setImage(URL.createObjectURL(file));
+  }, []);
 
   const handleMouseDown = useCallback((e, index) => {
     e.preventDefault(); // Prevent text selection while dragging
@@ -705,767 +756,338 @@ function App() {
     setGradientStops({});
   }, [selectedGradientColors]);
 
+  const isColorInRange = (hex, colorName) => {
+    const { h, s, l } = hexToHSL(hex);
+
+    // Define color ranges in HSL
+    const colorRanges = {
+      red: { hMin: 345, hMax: 15, sMin: 20, lMin: 20, lMax: 70 },
+      orange: { hMin: 15, hMax: 45, sMin: 20, lMin: 20, lMax: 70 },
+      yellow: { hMin: 45, hMax: 70, sMin: 20, lMin: 20, lMax: 70 },
+      green: { hMin: 70, hMax: 170, sMin: 20, lMin: 20, lMax: 70 },
+      blue: { hMin: 170, hMax: 260, sMin: 20, lMin: 20, lMax: 70 },
+      purple: { hMin: 260, hMax: 345, sMin: 20, lMin: 20, lMax: 70 },
+      brown: { hMin: 0, hMax: 40, sMin: 10, sMax: 100, lMin: 10, lMax: 55 },
+      pink: { hMin: 320, hMax: 345, sMin: 20, lMin: 65, lMax: 90 },
+      gray: { sMax: 20, lMin: 20, lMax: 80 },
+      black: { lMax: 20 },
+      white: { lMin: 80 },
+    };
+
+    const range = colorRanges[colorName];
+    if (!range) return false;
+
+    // Special case for grays, blacks, and whites
+    if (colorName === "gray") {
+      return s <= range.sMax && l >= range.lMin && l <= range.lMax;
+    }
+    if (colorName === "black") {
+      return l <= range.lMax;
+    }
+    if (colorName === "white") {
+      return l >= range.lMin;
+    }
+
+    // Handle hue wrapping for reds
+    if (range.hMin > range.hMax) {
+      return (
+        (h >= range.hMin || h <= range.hMax) &&
+        s >= range.sMin &&
+        l >= range.lMin &&
+        l <= range.lMax
+      );
+    }
+
+    return (
+      h >= range.hMin &&
+      h <= range.hMax &&
+      s >= range.sMin &&
+      l >= range.lMin &&
+      l <= range.lMax
+    );
+  };
+
+  const getFilteredPalettes = () => {
+    let filtered = coolors_palettes.palettes;
+
+    // Add color filtering before other filters
+    if (selectedColor !== "all") {
+      filtered = filtered.filter((palette) =>
+        palette.colors.some((color) => isColorInRange(color, selectedColor))
+      );
+    }
+
+    // Filter by category (you can define categories based on color analysis)
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter((palette) => {
+        switch (selectedCategory) {
+          case "dark":
+            // If most colors have low lightness
+            return (
+              palette.colors.filter((color) => {
+                const { l } = hexToHSL(color);
+                return l < 50;
+              }).length >= Math.ceil(palette.colors.length / 2)
+            );
+
+          case "light":
+            // If most colors have high lightness
+            return (
+              palette.colors.filter((color) => {
+                const { l } = hexToHSL(color);
+                return l > 50;
+              }).length >= Math.ceil(palette.colors.length / 2)
+            );
+
+          case "colorful":
+            // If colors have high saturation and varied hues
+            return (
+              palette.colors.every((color) => {
+                const { s } = hexToHSL(color);
+                return s > 30;
+              }) && hasVariedHues(palette.colors)
+            );
+
+          case "monochrome":
+            // If colors have similar hues but different lightness/saturation
+            return hasSimilarHues(palette.colors);
+
+          case "warm":
+            // If most colors are in warm hue range (reds, oranges, yellows)
+            return (
+              palette.colors.filter((color) => {
+                const { h } = hexToHSL(color);
+                return (h >= 0 && h <= 60) || h >= 300;
+              }).length >= Math.ceil(palette.colors.length / 2)
+            );
+
+          case "cool":
+            // If most colors are in cool hue range (blues, greens, purples)
+            return (
+              palette.colors.filter((color) => {
+                const { h } = hexToHSL(color);
+                return h > 60 && h < 300;
+              }).length >= Math.ceil(palette.colors.length / 2)
+            );
+
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Sort palettes
+    if (sortBy !== "default") {
+      filtered.sort((a, b) => {
+        switch (sortBy) {
+          case "name":
+            return (a.name || "").localeCompare(b.name || "");
+
+          case "brightness":
+            // Sort by average lightness
+            const avgBrightnessA =
+              a.colors.reduce((sum, color) => sum + hexToHSL(color).l, 0) /
+              a.colors.length;
+            const avgBrightnessB =
+              b.colors.reduce((sum, color) => sum + hexToHSL(color).l, 0) /
+              b.colors.length;
+            return avgBrightnessB - avgBrightnessA;
+
+          case "saturation":
+            // Sort by average saturation
+            const avgSaturationA =
+              a.colors.reduce((sum, color) => sum + hexToHSL(color).s, 0) /
+              a.colors.length;
+            const avgSaturationB =
+              b.colors.reduce((sum, color) => sum + hexToHSL(color).s, 0) /
+              b.colors.length;
+            return avgSaturationB - avgSaturationA;
+
+          default:
+            return 0;
+        }
+      });
+    }
+
+    // Search by name or color
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (palette) =>
+          (palette.name || "")
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          palette.colors.some((color) =>
+            color.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+      );
+    }
+
+    return filtered;
+  };
+
+  // Helper functions for category filtering
+  const hasVariedHues = (colors) => {
+    const hues = colors.map((color) => hexToHSL(color).h);
+    const uniqueHues = new Set(hues.map((h) => Math.round(h / 30))); // Group similar hues
+    return uniqueHues.size >= 3; // At least 3 different hue groups
+  };
+
+  const hasSimilarHues = (colors) => {
+    const hues = colors.map((color) => hexToHSL(color).h);
+    const hueRange = Math.max(...hues) - Math.min(...hues);
+    return hueRange <= 45; // All hues within 45 degrees
+  };
+
+  const isPaletteSaved = (palette) => {
+    return savedPalettes.some(
+      (saved) =>
+        saved.colors.length === palette.colors.length &&
+        saved.colors.every((color, index) => color === palette.colors[index])
+    );
+  };
+
+  const copyPaletteColors = (colors) => {
+    const colorString = colors.join(", ");
+    navigator.clipboard.writeText(colorString);
+    setCopiedText("palette colors");
+    setShowCopiedNotification(true);
+    setTimeout(() => setShowCopiedNotification(false), 2000);
+  };
+
+  const exportPalette = (palette) => {
+    const data = {
+      name: palette.name,
+      colors: palette.colors,
+      css: palette.colors
+        .map((color, i) => `--color-${i + 1}: ${color};`)
+        .join("\n"),
+      scss: palette.colors
+        .map((color, i) => `$color-${i + 1}: ${color};`)
+        .join("\n"),
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${palette.name || "palette"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSavedPalettesToggle = () => {
+    setShowSavedPalettes(!showSavedPalettes);
+    setActiveDropdown(null);
+  };
+
+  // Add useEffect to handle clicks outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        !event.target.closest(".dropdown-menu") &&
+        !event.target.closest(".dropdown-trigger")
+      ) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleSavePalette = (palette) => {
+    setSavedPalettes([...savedPalettes, palette]);
+    setSavedPaletteName(palette.name || "Palette");
+    setShowSaveModal(true);
+  };
+
+  // When a color is selected from the dropdown
+  const handleColorSelect = (color) => {
+    setSelectedColor(color);
+    setActiveDropdown(null);
+  };
+
+  const handleCloseSaveModal = () => {
+    setShowSaveModal(false);
+  };
+
+  // Add this to ensure unique palette names when the component mounts
+  useEffect(() => {
+    // Process the palettes to ensure unique names
+    const processedPalettes = ensureUniquePaletteNames(coolors_palettes.palettes);
+    setUniquePalettes(processedPalettes);
+  }, []);
+
   return (
-    <div className="min-h-screen p-4 md:p-8 space-y-6 md:space-y-8">
-      <h1 className="clay-card text-3xl md:text-4xl font-bold text-center p-4 md:p-6 rounded-xl mb-6 md:mb-8">
-        ColorLens 🔍
-      </h1>
+    <div className="min-h-screen bg-[var(--clay-background)]">
+      <Header />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <PaletteProvider>
+          <TabSelector activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Mobile Tab Buttons */}
-      <div className="lg:hidden clay-card rounded-xl p-2 grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setActiveTab("picker")}
-          className={`clay-button px-4 py-2 rounded-lg flex items-center justify-center space-x-2 ${
-            activeTab === "picker" ? "bg-gray-800" : ""
-          }`}
-        >
-          <SwatchIcon className="h-5 w-5" />
-          <span>Color Picker</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("generator")}
-          className={`clay-button px-4 py-2 rounded-lg flex items-center justify-center space-x-2 ${
-            activeTab === "generator" ? "bg-gray-800" : ""
-          }`}
-        >
-          <PhotoIcon className="h-5 w-5" />
-          <span>Palette Generator</span>
-        </button>
-      </div>
+          {activeTab === "picker" && (
+            <ColorPicker
+              colorPickerValue={colorPickerValue}
+              setColorPickerValue={setColorPickerValue}
+              savedColors={savedColors}
+              setSavedColors={setSavedColors}
+            />
+          )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        {/* Left Section - Color Picker */}
-        <div
-          className={`lg:col-span-4 clay-card p-4 md:p-6 rounded-xl space-y-4 md:space-y-6 ${
-            activeTab === "picker" ? "block" : "hidden lg:block"
-          }`}
-        >
-          <div className="flex items-center space-x-2 mb-4">
-            <SwatchIcon className="h-6 w-6" />
-            <h2 className="text-2xl font-semibold">Color Picker</h2>
-          </div>
+          {activeTab === "generator" && (
+            <ImageGenerator
+              getRootProps={getRootProps}
+              getInputProps={getInputProps}
+              image={image}
+              setImage={setImage}
+              onDrop={onDrop}
+            />
+          )}
 
-          <div className="space-y-4">
-            <div className="clay-card p-4 rounded-lg">
-              <label className="block text-sm font-medium mb-2">
-                Select Color
-              </label>
-              <input
-                type="color"
-                value={selectedColor}
-                onChange={(e) => setSelectedColor(e.target.value)}
-                className="w-full h-12 cursor-pointer clay-input rounded-md"
+          {activeTab === "discover" && (
+            <>
+              <DiscoverFilters
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                selectedColor={selectedColor}
+                setSelectedColor={setSelectedColor}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                handleSavedPalettesToggle={handleSavedPalettesToggle}
               />
-            </div>
-
-            <div className="clay-card p-4 rounded-lg">
-              <label className="block text-sm font-medium mb-2">
-                Color Values
-              </label>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span>HEX:</span>
-                  <button
-                    onClick={() => handleCopy(selectedColor)}
-                    className="clay-input px-3 py-1 rounded-md hover:text-indigo-400 transition-colors font-mono"
-                    title="Click to copy HEX"
-                  >
-                    {selectedColor}
-                  </button>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>RGB:</span>
-                  <button
-                    onClick={() => {
-                      const rgbValue = `rgb(${parseInt(
-                        selectedColor.slice(1, 3),
-                        16
-                      )}, ${parseInt(
-                        selectedColor.slice(3, 5),
-                        16
-                      )}, ${parseInt(selectedColor.slice(5, 7), 16)})`;
-                      handleCopy(rgbValue);
-                    }}
-                    className="clay-input px-3 py-1 rounded-md hover:text-indigo-400 transition-colors font-mono"
-                    title="Click to copy RGB"
-                  >
-                    {selectedColor &&
-                      `rgb(${parseInt(
-                        selectedColor.slice(1, 3),
-                        16
-                      )}, ${parseInt(
-                        selectedColor.slice(3, 5),
-                        16
-                      )}, ${parseInt(selectedColor.slice(5, 7), 16)})`}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Apply Colors */}
-            <div className="clay-card p-4 rounded-lg">
-              <label className="block text-sm font-medium mb-2">
-                Quick Apply
-              </label>
-              <div className="grid grid-cols-5 gap-2">
-                {[
-                  { color: "#FF0000", name: "Red" },
-                  { color: "#FFA500", name: "Orange" },
-                  { color: "#FFD700", name: "Yellow" },
-                  { color: "#008000", name: "Green" },
-                  { color: "#0000FF", name: "Blue" },
-                  { color: "#FFFFFF", name: "White" },
-                  { color: "#000000", name: "Black" },
-                  { color: "#808080", name: "Gray" },
-                  { color: "#800080", name: "Purple" },
-                  { color: "#C0C0C0", name: "Silver" },
-                ].map((colorObj, index) => (
-                  <button
-                    key={index}
-                    className="clay-card aspect-square rounded-md hover:scale-105 transition-transform relative group"
-                    style={{ backgroundColor: colorObj.color }}
-                    onClick={() => setSelectedColor(colorObj.color)}
-                    title={colorObj.name}
-                  >
-                    <span className="sr-only">{colorObj.name}</span>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="bg-black bg-opacity-50 px-2 py-1 rounded text-xs text-white">
-                        {colorObj.name}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                if (!savedColors.includes(selectedColor)) {
-                  setSavedColors([...savedColors, selectedColor]);
-                }
-              }}
-              className="clay-button w-full py-2 px-4 rounded-lg font-medium hover:bg-opacity-90 transition-all"
-            >
-              Save Color
-            </button>
-
-            <div className="clay-card p-4 rounded-lg">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium">
-                  Saved Colors
-                </label>
-                {savedColors.length > 0 && (
-                  <button
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to clear all saved colors?"
-                        )
-                      ) {
-                        setSavedColors([]);
-                        setSelectedGradientColors([]);
-                      }
-                    }}
-                    className="clay-button px-2 py-1 rounded text-xs hover:bg-red-500 hover:bg-opacity-20 transition-colors"
-                    title="Clear all saved colors"
-                  >
-                    Clear All
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-6 gap-2">
-                {savedColors.length === 0 ? (
-                  <div className="col-span-6 text-center text-sm text-gray-500 py-4">
-                    Saved colors will appear here
-                  </div>
-                ) : (
-                  savedColors.map((color, index) => (
-                    <div
-                      key={index}
-                      className={`clay-card aspect-square rounded-md cursor-pointer transition-all relative ${
-                        selectedGradientColors.includes(color)
-                          ? "ring-2 ring-indigo-500 scale-110"
-                          : "hover:scale-105"
-                      }`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => {
-                        if (selectedGradientColors.includes(color)) {
-                          setSelectedGradientColors(
-                            selectedGradientColors.filter((c) => c !== color)
-                          );
-                        } else {
-                          setSelectedGradientColors([
-                            ...selectedGradientColors,
-                            color,
-                          ]);
-                        }
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        if (window.confirm(`Delete color ${color}?`)) {
-                          setSavedColors(
-                            savedColors.filter((_, i) => i !== index)
-                          );
-                          setSelectedGradientColors(
-                            selectedGradientColors.filter((c) => c !== color)
-                          );
-                        }
-                      }}
-                      onDoubleClick={() => {
-                        setSelectedColor(color);
-                        // Show a brief notification
-                        setCopiedText("Color loaded to picker");
-                        setShowCopiedNotification(true);
-                        if (notificationTimeout.current) {
-                          clearTimeout(notificationTimeout.current);
-                        }
-                        notificationTimeout.current = setTimeout(() => {
-                          setShowCopiedNotification(false);
-                        }, 2000);
-                      }}
-                      title="Click to add/remove from gradient, double-click to load in picker, right-click to delete"
-                    >
-                      {selectedGradientColors.includes(color) && (
-                        <div
-                          className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-bold text-white clay-card"
-                          style={{
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                          }}
-                        >
-                          {selectedGradientColors.indexOf(color) + 1}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Gradient Section */}
-            {savedColors.length >= 2 && (
-              <div className="clay-card p-4 rounded-lg space-y-4">
-                <label className="block text-sm font-medium mb-2">
-                  Create Gradient
-                </label>
-                <div className="space-y-4">
-                  {selectedGradientColors.length >= 2 ? (
-                    <>
-                      <div className="clay-card p-4 rounded-lg">
-                        <div className="flex items-center justify-between mb-4">
-                          <label className="text-sm font-medium">
-                            Fade Length:
-                          </label>
-                          <select
-                            value={fadeLength}
-                            onChange={(e) =>
-                              setFadeLength(Number(e.target.value))
-                            }
-                            className="clay-input px-3 py-2 rounded-lg text-sm"
-                          >
-                            <option value={25}>25%</option>
-                            <option value={50}>50%</option>
-                            <option value={75}>75%</option>
-                            <option value={100}>100%</option>
-                          </select>
-                        </div>
-                        <div
-                          ref={gradientRef}
-                          className="relative h-24 rounded-lg group"
-                          style={{
-                            background: `linear-gradient(to right, ${selectedGradientColors
-                              .map((color, i) => {
-                                if (selectedGradientColors.length === 2) {
-                                  const midPoint = gradientStops[0] || 50;
-                                  const halfFade = fadeLength / 2;
-                                  if (i === 0) {
-                                    const fadeStart = Math.max(
-                                      0,
-                                      midPoint - halfFade
-                                    );
-                                    return `${color} 0%, ${color} ${fadeStart}%`;
-                                  } else {
-                                    const fadeEnd = Math.min(
-                                      100,
-                                      midPoint + halfFade
-                                    );
-                                    return `${color} ${midPoint}%, ${color} ${fadeEnd}%, ${color} 100%`;
-                                  }
-                                }
-
-                                // For more than two colors
-                                if (i === 0) return `${color} 0%`;
-                                const stopPosition =
-                                  gradientStops[i - 1] ||
-                                  (i * 100) /
-                                    (selectedGradientColors.length - 1);
-                                return `${color} ${stopPosition}%`;
-                              })
-                              .join(", ")})`,
-                          }}
-                        >
-                          {/* Gradient Stop Dividers */}
-                          {selectedGradientColors.length >= 2 &&
-                            selectedGradientColors
-                              .slice(0, -1)
-                              .map((_, index) => {
-                                const position =
-                                  gradientStops[index] ||
-                                  ((index + 0.5) * 100) /
-                                    (selectedGradientColors.length - 1);
-
-                                return (
-                                  <div
-                                    key={index}
-                                    className="absolute top-0 bottom-0 w-1 bg-white bg-opacity-0 group-hover:bg-opacity-50 cursor-ew-resize transition-opacity"
-                                    style={{
-                                      left: `${position}%`,
-                                      transform: "translateX(-50%)",
-                                      touchAction: "none",
-                                    }}
-                                    onMouseDown={(e) =>
-                                      handleGradientStopDragStart(e, index)
-                                    }
-                                    onTouchStart={(e) =>
-                                      handleGradientStopDragStart(e, index)
-                                    }
-                                    onTouchMove={(e) => e.preventDefault()}
-                                  >
-                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  </div>
-                                );
-                              })}
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs font-mono">
-                          {selectedGradientColors.map((color, index) => (
-                            <span
-                              key={index}
-                              className="clay-button px-2 py-1 rounded flex items-center gap-1"
-                              onClick={() => {
-                                setSelectedGradientColors(
-                                  selectedGradientColors.filter(
-                                    (_, i) => i !== index
-                                  )
-                                );
-                              }}
-                            >
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: color }}
-                              />
-                              {color}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          const gradientCSS = `background: linear-gradient(to right, ${selectedGradientColors.join(
-                            ", "
-                          )});`;
-                          handleCopy(gradientCSS);
-                        }}
-                        className="clay-button w-full py-2 px-4 rounded-lg font-medium hover:bg-opacity-90 transition-all"
-                      >
-                        Copy CSS
-                      </button>
-                    </>
-                  ) : (
-                    <div className="text-center text-sm opacity-75">
-                      Select at least 2 colors from above to create a gradient
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Section - Palette Generator */}
-        <div
-          className={`lg:col-span-8 clay-card p-4 md:p-6 rounded-xl ${
-            activeTab === "generator" ? "block" : "hidden lg:block"
-          }`}
-        >
-          <div className="flex items-center space-x-2 mb-4">
-            <PhotoIcon className="h-6 w-6" />
-            <h2 className="text-2xl font-semibold">Palette Generator</h2>
-          </div>
-
-          {/* Existing palette generator content */}
-          <div className="space-y-6">
-            {!image && (
-              <div
-                {...getRootProps()}
-                className="clay-card p-8 rounded-xl text-center cursor-pointer"
-              >
-                <input {...getInputProps()} />
-                <div className="flex flex-col items-center space-y-4">
-                  <ArrowUpTrayIcon className="h-12 w-12" />
-                  <p className="text-lg">
-                    Drop an image here or click to select
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {image && (
-              <div className="relative">
-                {isLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-xl z-50">
-                    <div className="clay-card p-4 rounded-lg">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
-                    </div>
-                  </div>
-                )}
+              <PaletteGrid
+                palettes={uniquePalettes}
+                searchTerm={searchTerm}
+                selectedColor={selectedColor}
+                selectedCategory={selectedCategory}
+                sortBy={sortBy}
+              />
+              {showSavedPalettes && (
                 <div
-                  ref={containerRef}
-                  className="relative clay-card p-2 md:p-4 rounded-xl flex justify-center w-full"
-                  style={{ maxWidth: "100%" }}
-                  onMouseMove={handleMouseMove}
-                  onTouchMove={handleMouseMove}
-                >
-                  <div className="relative inline-block">
-                    <img
-                      ref={imageRef}
-                      src={image}
-                      alt="Uploaded"
-                      className="rounded-lg"
-                      onLoad={() => {
-                        console.log("Image onLoad event fired");
-                        handleImageLoad();
-                      }}
-                      style={{
-                        opacity: isDragging ? 0.7 : 1,
-                        maxHeight: "500px",
-                        width: "auto",
-                        height: "auto",
-                        touchAction: "none",
-                      }}
-                    />
-                    <canvas ref={canvasRef} style={{ display: "none" }} />
-                    {dots &&
-                      dots.map(
-                        (dot, index) =>
-                          dot && (
-                            <div
-                              key={index}
-                              className="absolute w-8 h-8 -ml-4 -mt-4 rounded-full cursor-move clay-card flex items-center justify-center touch-none"
-                              style={{
-                                left: `${dot.x}px`,
-                                top: `${dot.y}px`,
-                                backgroundColor: dot.rgb || "#000000",
-                                transform: `scale(${
-                                  hoveredDot === index || draggedDot === index
-                                    ? 1.5
-                                    : 1
-                                })`,
-                                zIndex:
-                                  hoveredDot === index || draggedDot === index
-                                    ? 10
-                                    : 1,
-                                cursor:
-                                  isDragging && draggedDot === index
-                                    ? "grabbing"
-                                    : "grab",
-                                touchAction: "none",
-                                boxShadow:
-                                  hoveredDot === index || draggedDot === index
-                                    ? "0 0 12px rgba(0,0,0,0.5), 0 0 2px rgba(255,255,255,0.2)"
-                                    : "0 0 8px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1)",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                              }}
-                              onMouseDown={(e) => handleMouseDown(e, index)}
-                              onTouchStart={(e) => handleTouchStart(e, index)}
-                              onMouseEnter={() => setHoveredDot(index)}
-                              onMouseLeave={() => setHoveredDot(null)}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            >
-                              <span
-                                className="text-sm font-bold select-none"
-                                style={{
-                                  color: getContrastColor(dot.hex || "#000000"),
-                                  textShadow: "0px 0px 2px rgba(0,0,0,0.5)",
-                                  pointerEvents: "none",
-                                }}
-                              >
-                                {index + 1}
-                              </span>
-                            </div>
-                          )
-                      )}
-                  </div>
-                </div>
+                  className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                  onClick={handleSavedPalettesToggle}
+                ></div>
+              )}
+              <SavedPalettes
+                showSavedPalettes={showSavedPalettes}
+                handleSavedPalettesToggle={handleSavedPalettesToggle}
+              />
+            </>
+          )}
 
-                <div className="flex justify-center mt-4 mb-4">
-                  <div className="clay-card p-4 rounded-xl w-64">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium">
-                        Number of Colors:
-                      </label>
-                      <select
-                        value={colorCount}
-                        onChange={(e) => {
-                          setColorCount(Number(e.target.value));
-                          generateRandomDots();
-                        }}
-                        className="clay-input px-3 py-2 rounded-lg text-sm"
-                      >
-                        {[3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <option key={num} value={num}>
-                            {num} Colors
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="clay-card p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="text-sm font-medium">
-                      Generated Palette
-                    </label>
-                    <div className="flex gap-2">
-                      <div
-                        {...getRootProps()}
-                        className="clay-button p-2 lg:px-4 lg:py-2 rounded-lg flex items-center justify-center lg:justify-start"
-                      >
-                        <input {...getInputProps()} />
-                        <ArrowUpTrayIcon className="h-5 w-5" />
-                        <span className="hidden lg:inline lg:ml-2">
-                          Import New Image
-                        </span>
-                      </div>
-                      <button
-                        onClick={generateRandomDots}
-                        className="clay-button p-2 lg:px-4 lg:py-2 rounded-lg flex items-center justify-center lg:justify-start"
-                      >
-                        <ArrowPathIcon className="h-5 w-5" />
-                        <span className="hidden lg:inline lg:ml-2">
-                          Rerandomize Palette
-                        </span>
-                      </button>
-                      <div className="relative" ref={downloadMenuRef}>
-                        <button
-                          onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                          className="clay-button p-2 lg:px-4 lg:py-2 rounded-lg flex items-center justify-center lg:justify-start"
-                        >
-                          <DocumentArrowDownIcon className="h-5 w-5" />
-                          <span className="hidden lg:inline lg:ml-2">
-                            Download as
-                          </span>
-                          <ChevronDownIcon className="h-4 w-4 hidden lg:block lg:ml-2" />
-                        </button>
-                        {showDownloadMenu && (
-                          <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg clay-card ring-1 ring-black ring-opacity-5 z-50">
-                            <div className="py-1" role="menu">
-                              <button
-                                onClick={() => {
-                                  setShowDownloadMenu(false);
-                                  downloadPNG();
-                                }}
-                                className="block w-full px-4 py-2 text-sm text-left hover:bg-gray-800"
-                                role="menuitem"
-                              >
-                                PNG
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setShowDownloadMenu(false);
-                                  downloadJPG();
-                                }}
-                                className="block w-full px-4 py-2 text-sm text-left hover:bg-gray-800"
-                                role="menuitem"
-                              >
-                                JPEG
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setShowDownloadMenu(false);
-                                  downloadJSON();
-                                }}
-                                className="block w-full px-4 py-2 text-sm text-left hover:bg-gray-800"
-                                role="menuitem"
-                              >
-                                JSON
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {dots &&
-                      dots.map(
-                        (dot, index) =>
-                          dot && (
-                            <div
-                              key={index}
-                              className={`clay-card p-4 rounded-lg space-y-3 transition-transform duration-200 ${
-                                hoveredDot === index
-                                  ? "scale-105 ring-2 ring-indigo-500"
-                                  : ""
-                              }`}
-                              onMouseEnter={() => setHoveredDot(index)}
-                              onMouseLeave={() => setHoveredDot(null)}
-                            >
-                              <div className="relative">
-                                <div
-                                  className="w-full aspect-square rounded-lg shadow-lg"
-                                  style={{
-                                    backgroundColor: dot.hex || "#000000",
-                                  }}
-                                />
-                                <div
-                                  className="absolute -top-3 -right-3 w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center clay-card border border-gray-700"
-                                  style={{
-                                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                                  }}
-                                >
-                                  <span className="text-sm font-bold text-gray-200">
-                                    {index + 1}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="space-y-2 pt-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (!isDragging) {
-                                      handleCopy(dot.hex);
-                                    }
-                                  }}
-                                  className="w-full text-sm font-mono hover:text-indigo-400 transition-colors text-center break-all"
-                                  title="Click to copy HEX"
-                                >
-                                  {dot.hex || "#000000"}
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (!isDragging) {
-                                      handleCopy(dot.rgb);
-                                    }
-                                  }}
-                                  className="w-full text-xs font-mono hover:text-indigo-400 transition-colors text-center opacity-75 break-all"
-                                  title="Click to copy RGB"
-                                >
-                                  {dot.rgb || "rgb(0,0,0)"}
-                                </button>
-                              </div>
-                            </div>
-                          )
-                      )}
-                  </div>
-
-                  {/* Hidden element for downloads */}
-                  <div
-                    id="downloadable-palette"
-                    style={{
-                      position: "fixed",
-                      left: "-9999px",
-                      background: "#1a1b1e",
-                      padding: "40px",
-                      width: "800px",
-                      color: "#ffffff",
-                    }}
-                  >
-                    <h2
-                      style={{
-                        fontSize: "24px",
-                        fontWeight: "bold",
-                        marginBottom: "24px",
-                      }}
-                    >
-                      ColorLens Palette
-                    </h2>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "24px",
-                      }}
-                    >
-                      {dots &&
-                        dots.map(
-                          (dot, index) =>
-                            dot && (
-                              <div
-                                key={index}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "32px",
-                                  height: "80px",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    width: "80px",
-                                    height: "80px",
-                                    backgroundColor: dot.hex || "#000000",
-                                    borderRadius: "8px",
-                                  }}
-                                />
-                                <div>
-                                  <div
-                                    style={{
-                                      fontSize: "24px",
-                                      fontFamily: "monospace",
-                                    }}
-                                  >
-                                    {dot.hex || "#000000"}
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: "18px",
-                                      fontFamily: "monospace",
-                                      opacity: "0.75",
-                                    }}
-                                  >
-                                    {dot.rgb || "rgb(0,0,0)"}
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                        )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="clay-card mt-8 p-4 rounded-xl text-center">
-        <p
-          className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-gradient-wave font-medium text-lg md:text-2xl"
-          style={{ backgroundSize: "200% 100%" }}
-        >
-          ColorLens mobile app coming soon!
-        </p>
-      </div>
-
-      {/* Notification */}
-      <div
-        className={`fixed bottom-4 right-4 clay-card px-4 py-3 rounded-lg flex items-center space-x-2 transition-opacity duration-200 ${
-          showCopiedNotification
-            ? "opacity-100"
-            : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <CheckCircleIcon className="h-5 w-5 text-green-500" />
-        <span>Copied {copiedText}</span>
-      </div>
+          <SaveModal
+            show={showSaveModal}
+            paletteName={savedPaletteName}
+            onClose={handleCloseSaveModal}
+          />
+        </PaletteProvider>
+      </main>
     </div>
   );
 }
