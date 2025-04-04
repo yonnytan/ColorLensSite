@@ -1,11 +1,12 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronUpIcon } from "@heroicons/react/24/outline";
 import { HeartIcon } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartIconSolid } from "@heroicons/react/24/solid";
 import { usePalette } from "../../context/PaletteContext";
 import { useState, useEffect } from "react";
 
-export function DiscoverFilters({ 
-  searchTerm, 
+export function DiscoverFilters({
+  searchTerm,
   setSearchTerm,
   selectedColor,
   setSelectedColor,
@@ -15,29 +16,38 @@ export function DiscoverFilters({
   setSortBy,
   colorCount,
   setColorCount,
-  handleSavedPalettesToggle
+  handleSavedPalettesToggle,
 }) {
   const { discoverPalettes } = usePalette();
   const hasSavedPalettes = discoverPalettes.length > 0;
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Check if the screen is mobile size
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     // Initial check
     checkIfMobile();
-    
+
     // Add event listener
-    window.addEventListener('resize', checkIfMobile);
-    
+    window.addEventListener("resize", checkIfMobile);
+
     // Cleanup
-    return () => window.removeEventListener('resize', checkIfMobile);
+    return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
-  
+
+  // Reset all filters to default values
+  const resetAllFilters = () => {
+    setSearchTerm("");
+    setSelectedColor("all");
+    setSelectedCategory("all");
+    setSortBy("default");
+    setColorCount("all");
+  };
+
   return (
     <div className="mb-6 space-y-4">
       {/* Search and Filters Toggle for Mobile */}
@@ -52,17 +62,22 @@ export function DiscoverFilters({
             className="clay-card w-full px-4 py-2 rounded-lg bg-transparent"
           />
         </div>
-        
+
         {/* Filters Toggle Button - Mobile Only */}
         {isMobile && (
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="clay-card px-4 py-2 rounded-lg"
           >
-            Filters {showFilters ? '▲' : '▼'}
+            Filters{" "}
+            {showFilters ? (
+              <ChevronUpIcon className="w-5 h-5 inline" />
+            ) : (
+              <ChevronDownIcon className="w-5 h-5 inline" />
+            )}
           </button>
         )}
-        
+
         {/* Saved Palettes Button */}
         <button
           onClick={handleSavedPalettesToggle}
@@ -77,7 +92,7 @@ export function DiscoverFilters({
           <span className="hidden md:inline">Saved</span>
         </button>
       </div>
-      
+
       {/* Filter Controls - Always visible on desktop, toggleable on mobile */}
       {(!isMobile || showFilters) && (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
@@ -150,8 +165,16 @@ export function DiscoverFilters({
             </select>
             <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5" />
           </div>
+
+          {/* Reset Button */}
+          <button
+            onClick={resetAllFilters}
+            className="clay-card w-full px-4 py-2 rounded-lg bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            Reset Filters
+          </button>
         </div>
       )}
     </div>
   );
-} 
+}
