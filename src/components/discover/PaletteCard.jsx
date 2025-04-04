@@ -10,7 +10,15 @@ import { getContrastColor } from "../../utils/colorUtils";
 import { useState, useEffect } from "react";
 import { ConfirmationModal } from "../common/ConfirmationModal";
 
-export function PaletteCard({ palette, index, isSaved = false }) {
+export function PaletteCard({
+  palette,
+  index,
+  isSaved = false,
+  isCompact = false,
+  selectedPalette,
+  className = "",
+  onClick,
+}) {
   const {
     isDiscoverPaletteSaved,
     handleSaveDiscoverPalette,
@@ -23,6 +31,11 @@ export function PaletteCard({ palette, index, isSaved = false }) {
   const [colorWidths, setColorWidths] = useState({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showUnsaveConfirmation, setShowUnsaveConfirmation] = useState(false);
+
+  // Check if palette is selected
+  const isSelected =
+    selectedPalette &&
+    JSON.stringify(selectedPalette.colors) === JSON.stringify(palette.colors);
 
   // Initialize color widths based on palette size
   useEffect(() => {
@@ -38,6 +51,8 @@ export function PaletteCard({ palette, index, isSaved = false }) {
 
   // Handle color hover
   const handleColorHover = (color, index) => {
+    if (className === "compact" || isCompact) return; // Disable hover effect in compact mode
+
     setHoveredColor(`${color}-${index}`);
 
     const baseWidth = 100 / palette.colors.length;
@@ -56,6 +71,8 @@ export function PaletteCard({ palette, index, isSaved = false }) {
 
   // Handle mouse leave
   const handleMouseLeave = () => {
+    if (className === "compact" || isCompact) return; // Disable hover effect in compact mode
+
     setHoveredColor(null);
 
     const baseWidth = 100 / palette.colors.length;
@@ -104,6 +121,52 @@ export function PaletteCard({ palette, index, isSaved = false }) {
     setShowDeleteConfirmation(true);
   };
 
+  // Handle click on palette
+  const handlePaletteClick = () => {
+    if (onClick) {
+      onClick(palette);
+    }
+  };
+
+  // Render compact version for UI Playground sidebar
+  if (className === "compact" || isCompact) {
+    return (
+      <div
+        className={`group cursor-pointer rounded-md overflow-hidden border transition-all duration-150 ${
+          isSelected
+            ? "border-blue-500 ring-1 ring-blue-500 shadow-sm"
+            : "border-gray-700/20 hover:border-gray-500/30"
+        }`}
+        onClick={handlePaletteClick}
+      >
+        {/* Compact color blocks */}
+        <div className="flex h-8 w-full">
+          {palette.colors.map((color, i) => (
+            <div
+              key={`${color}-${i}`}
+              style={{
+                backgroundColor: color,
+                width: `${100 / palette.colors.length}%`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Compact palette name */}
+        <div
+          className={`text-[10px] px-1.5 py-1 text-center truncate ${
+            isSelected
+              ? "bg-blue-900/20 text-blue-300"
+              : "text-gray-400 group-hover:text-gray-300"
+          }`}
+        >
+          {palette.name || `Palette ${index + 1}`}
+        </div>
+      </div>
+    );
+  }
+
+  // Regular palette card
   return (
     <div className="clay-card p-4 rounded-xl space-y-6">
       {/* Palette Name */}

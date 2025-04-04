@@ -91,13 +91,18 @@ export function ColorPicker({
     }
   }, [colorModel, colorPickerValue]);
 
-  // Add this useEffect to detect mobile screens
+  // Update the useEffect to initialize mobileSidebarOpen state correctly
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint in Tailwind
+      const isMobileDevice = window.innerWidth < 1024; // lg breakpoint in Tailwind
+      setIsMobile(isMobileDevice);
+      // We're no longer setting mobileSidebarOpen here, since we want it to start closed
     };
 
+    // Initial check
     checkMobile();
+
+    // Add resize listener
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
@@ -526,133 +531,132 @@ export function ColorPicker({
                             {/* Color input field - takes 2/3 width on mobile */}
                             <div className="w-2/3 sm:w-full">
                               <label
-                                htmlFor="color-input"
+                                htmlFor="current-color"
                                 className="block text-sm font-medium text-gray-400 mb-1"
                               >
                                 Color Value
                               </label>
-                              <div className="relative">
+                              <div>
                                 <input
-                                  id="color-input"
+                                  id="current-color"
                                   type="text"
                                   value={colorInputValue}
                                   onChange={(e) => {
-                                    const value = e.target.value;
-                                    setColorInputValue(value);
-
-                                    // Only update the actual color when the input is valid
+                                    setColorInputValue(e.target.value);
+                                    // Try to parse the input value based on the current color model
+                                    const newValue = e.target.value.trim();
                                     if (colorModel === "HEX") {
+                                      // Basic validation for hex color
                                       if (
                                         /^#?([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(
-                                          value
+                                          newValue
                                         )
                                       ) {
-                                        setColorPickerValue(
-                                          value.startsWith("#")
-                                            ? value
-                                            : `#${value}`
-                                        );
+                                        const formattedColor =
+                                          newValue.startsWith("#")
+                                            ? newValue
+                                            : `#${newValue}`;
+                                        setColorPickerValue(formattedColor);
                                       }
                                     } else if (colorModel === "RGB") {
-                                      if (
-                                        /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/.test(
-                                          value
-                                        )
-                                      ) {
-                                        const rgbValues = value.match(/\d+/g);
+                                      // Try to parse RGB format
+                                      const rgbMatch = newValue.match(
+                                        /rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i
+                                      );
+                                      if (rgbMatch) {
+                                        const r = parseInt(rgbMatch[1]);
+                                        const g = parseInt(rgbMatch[2]);
+                                        const b = parseInt(rgbMatch[3]);
                                         if (
-                                          rgbValues &&
-                                          rgbValues.length === 3
+                                          r >= 0 &&
+                                          r <= 255 &&
+                                          g >= 0 &&
+                                          g <= 255 &&
+                                          b >= 0 &&
+                                          b <= 255
                                         ) {
-                                          const [r, g, b] =
-                                            rgbValues.map(Number);
-                                          if (
-                                            r <= 255 &&
-                                            g <= 255 &&
-                                            b <= 255
-                                          ) {
-                                            setColorPickerValue(
-                                              rgbToHex(r, g, b)
-                                            );
-                                          }
+                                          const hexColor = rgbToHex(r, g, b);
+                                          setColorPickerValue(hexColor);
                                         }
                                       }
                                     } else if (colorModel === "HSL") {
-                                      if (
-                                        /^hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\)$/.test(
-                                          value
-                                        )
-                                      ) {
-                                        const hslValues = value.match(/\d+/g);
+                                      // Try to parse HSL format
+                                      const hslMatch = newValue.match(
+                                        /hsl\(\s*(\d+)\s*,\s*(\d+)%?\s*,\s*(\d+)%?\s*\)/i
+                                      );
+                                      if (hslMatch) {
+                                        const h = parseInt(hslMatch[1]);
+                                        const s = parseInt(hslMatch[2]);
+                                        const l = parseInt(hslMatch[3]);
                                         if (
-                                          hslValues &&
-                                          hslValues.length === 3
+                                          h >= 0 &&
+                                          h <= 360 &&
+                                          s >= 0 &&
+                                          s <= 100 &&
+                                          l >= 0 &&
+                                          l <= 100
                                         ) {
-                                          const [h, s, l] =
-                                            hslValues.map(Number);
-                                          if (
-                                            h <= 360 &&
-                                            s <= 100 &&
-                                            l <= 100
-                                          ) {
-                                            setColorPickerValue(
-                                              hslToHex(h, s, l)
-                                            );
-                                          }
+                                          const hexColor = hslToHex(h, s, l);
+                                          setColorPickerValue(hexColor);
                                         }
                                       }
                                     }
                                   }}
                                   className="clay-input w-full px-3 py-2 rounded-lg"
                                 />
-                              </div>
-                            </div>
 
-                            {/* Format dropdown - takes 1/3 width on mobile, moved next to input */}
-                            <div
-                              className="w-1/3 sm:w-full sm:mt-0 flex flex-col justify-end"
-                              ref={formatDropdownRef}
-                            >
-                              <label
-                                htmlFor="color-format"
-                                className="block text-sm font-medium text-gray-400 mb-1"
-                              >
-                                Format
-                              </label>
-                              <div className="relative">
-                                <button
-                                  id="color-format"
-                                  onClick={() =>
-                                    setIsModelDropdownOpen(!isModelDropdownOpen)
-                                  }
-                                  className="clay-input w-full px-3 py-2 rounded-lg flex items-center justify-between"
-                                >
-                                  <span>{colorModel}</span>
-                                  <ChevronDownIcon className="w-4 h-4" />
-                                </button>
+                                {/* Mini tab selector for color format */}
+                                <div className="mt-2 relative">
+                                  <div className="clay-card inline-flex w-full rounded-lg p-0.5 relative">
+                                    {/* Animated indicator - fixed to correctly position over each tab */}
+                                    <div
+                                      className="absolute bg-gray-700 rounded-md transition-all duration-200 ease-in-out z-0"
+                                      style={{
+                                        width: "33.33%",
+                                        height: "calc(100% - 4px)",
+                                        left: "2px",
+                                        top: "2px",
+                                        transform: `translateX(${
+                                          ["HEX", "RGB", "HSL"].indexOf(
+                                            colorModel
+                                          ) * 100
+                                        }%)`,
+                                      }}
+                                    />
 
-                                {isModelDropdownOpen && (
-                                  <div className="absolute top-full left-0 mt-1 w-full bg-gray-800 rounded-lg shadow-lg z-30 overflow-hidden">
-                                    <div className="py-1">
-                                      {["HEX", "RGB", "HSL"].map((model) => (
+                                    {/* Format tabs */}
+                                    {["HEX", "RGB", "HSL"].map(
+                                      (model, index) => (
                                         <button
                                           key={model}
-                                          className={`w-full text-left px-3 py-1.5 hover:bg-gray-700 ${
+                                          className={`flex-1 text-center py-1.5 px-2 text-xs font-medium transition-colors rounded-md relative z-10 ${
                                             colorModel === model
-                                              ? "bg-gray-700"
-                                              : ""
+                                              ? "text-white"
+                                              : "text-gray-300 hover:text-white"
                                           }`}
                                           onClick={() => {
                                             setColorModel(model);
-                                            setIsModelDropdownOpen(false);
+                                            if (model === "HEX") {
+                                              setColorInputValue(
+                                                colorPickerValue.toUpperCase()
+                                              );
+                                            } else if (model === "RGB") {
+                                              setColorInputValue(
+                                                getRGBString(colorPickerValue)
+                                              );
+                                            } else {
+                                              setColorInputValue(
+                                                getHSLString(colorPickerValue)
+                                              );
+                                            }
                                           }}
                                         >
                                           {model}
                                         </button>
-                                      ))}
-                                    </div>
+                                      )
+                                    )}
                                   </div>
-                                )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -835,6 +839,10 @@ export function ColorPicker({
                               e.preventDefault();
                               e.stopPropagation();
                               setColorPickerValue(stop.color);
+                              // Find and click the native color picker input in this div
+                              e.currentTarget
+                                .querySelector('input[type="color"]')
+                                .click();
                             }}
                           >
                             <span
@@ -850,6 +858,8 @@ export function ColorPicker({
                                 handleGradientColorChange(index, e.target.value)
                               }
                               className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                              // Prevent click propagation to avoid double-clicks
+                              onClick={(e) => e.stopPropagation()}
                             />
                           </div>
 

@@ -2,6 +2,7 @@ import {
   PhotoIcon,
   SwatchIcon,
   SparklesIcon,
+  DocumentIcon,
 } from "@heroicons/react/24/outline";
 import { useRef, useEffect, useState } from "react";
 
@@ -10,6 +11,7 @@ export function TabSelector({ activeTab, setActiveTab }) {
   const pickerRef = useRef(null);
   const generatorRef = useRef(null);
   const discoverRef = useRef(null);
+  const playgroundRef = useRef(null);
   const containerRef = useRef(null);
 
   // Update indicator position when activeTab changes
@@ -20,6 +22,7 @@ export function TabSelector({ activeTab, setActiveTab }) {
       if (activeTab === "picker") activeRef = pickerRef.current;
       else if (activeTab === "generator") activeRef = generatorRef.current;
       else if (activeTab === "discover") activeRef = discoverRef.current;
+      else if (activeTab === "playground") activeRef = playgroundRef.current;
 
       if (activeRef && containerRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect();
@@ -58,17 +61,31 @@ export function TabSelector({ activeTab, setActiveTab }) {
         />
 
         <button
-          ref={pickerRef}
-          onClick={() => setActiveTab("picker")}
+          ref={discoverRef}
+          onClick={() => setActiveTab("discover")}
           className={`flex items-center px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors relative z-10 ${
-            activeTab === "picker"
+            activeTab === "discover"
               ? "text-white"
               : "text-gray-300 hover:text-white"
           }`}
         >
-          <SwatchIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-          <span className="hidden sm:inline">Color Picker</span>
-          <span className="inline sm:hidden">Colors</span>
+          <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Discover</span>
+          <span className="inline sm:hidden">Discover</span>
+        </button>
+
+        <button
+          ref={playgroundRef}
+          onClick={() => setActiveTab("playground")}
+          className={`flex items-center px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors relative z-10 ${
+            activeTab === "playground"
+              ? "text-white"
+              : "text-gray-300 hover:text-white"
+          }`}
+        >
+          <DocumentIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">UI Playground</span>
+          <span className="inline sm:hidden">UI</span>
         </button>
 
         <button
@@ -86,17 +103,17 @@ export function TabSelector({ activeTab, setActiveTab }) {
         </button>
 
         <button
-          ref={discoverRef}
-          onClick={() => setActiveTab("discover")}
+          ref={pickerRef}
+          onClick={() => setActiveTab("picker")}
           className={`flex items-center px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors relative z-10 ${
-            activeTab === "discover"
+            activeTab === "picker"
               ? "text-white"
               : "text-gray-300 hover:text-white"
           }`}
         >
-          <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-          <span className="hidden sm:inline">Discover</span>
-          <span className="inline sm:hidden">Discover</span>
+          <SwatchIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Color Picker</span>
+          <span className="inline sm:hidden">Colors</span>
         </button>
       </div>
     </div>

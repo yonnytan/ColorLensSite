@@ -28,6 +28,7 @@ import { SaveModal } from "./components/common/SaveModal";
 import { TabSelector } from "./components/common/TabSelector";
 import { ColorPicker } from "./components/picker/ColorPicker";
 import { ImageGenerator } from "./components/picker/ImageGenerator";
+import { UIPlayground } from "./components/playground/UIPlayground";
 import { Header } from "./components/common/Header";
 
 // Utility function to determine text color based on background
@@ -143,7 +144,7 @@ function App() {
   const containerRef = useRef(null);
   const downloadMenuRef = useRef(null);
   const gradientRef = useRef(null);
-  const [activeTab, setActiveTab] = useState("picker"); // 'picker' or 'generator' or 'discover'
+  const [activeTab, setActiveTab] = useState("discover"); // Default tab is now 'discover' instead of 'picker'
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("default");
@@ -1034,6 +1035,7 @@ function App() {
 
           {activeTab === "picker" && (
             <ColorPicker
+              key="colorPicker"
               colorPickerValue={colorPickerValue}
               setColorPickerValue={setColorPickerValue}
               savedColors={savedColors}
@@ -1086,6 +1088,8 @@ function App() {
               />
             </>
           )}
+
+          {activeTab === "playground" && <UIPlayground />}
 
           <SaveModal
             show={showSaveModal}
