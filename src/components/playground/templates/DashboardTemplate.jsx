@@ -387,7 +387,7 @@ export function DashboardTemplate({
                 <div className="flex items-center mb-4">
                   <div className="h-8 w-8 rounded-full bg-white/20 mr-3"></div>
                   <div>
-                    <div className="font-medium">Alice Smith</div>
+                    <div className="font-medium">John Doe</div>
                     <div className="text-xs opacity-70">Product Manager</div>
                   </div>
                 </div>

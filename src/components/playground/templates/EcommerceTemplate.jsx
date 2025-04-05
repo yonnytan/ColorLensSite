@@ -321,7 +321,7 @@ export function EcommerceTemplate({
               style={{ color: primary }}
               onClick={() => console.log("Logo clicked")}
             >
-              Modern<span style={{ color: secondary }}>Store</span>
+              Color<span style={{ color: secondary }}>Store</span>
             </div>
 
             {/* Search Bar */}
@@ -796,7 +796,7 @@ export function EcommerceTemplate({
                 style={{ color: primary }}
                 onClick={() => console.log("Footer logo clicked")}
               >
-                Modern<span style={{ color: secondary }}>Store</span>
+                Color<span style={{ color: secondary }}>Store</span>
               </div>
               <p className="mb-4" style={styles.mutedText}>
                 Your one-stop destination for modern, high-quality products at
