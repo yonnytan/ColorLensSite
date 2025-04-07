@@ -336,6 +336,122 @@ export function UIPlayground() {
     }));
   };
 
+  // Add this function after the handleLayoutChange function
+  const getTemplateSections = () => {
+    switch (selectedTemplate) {
+      case "dashboard":
+        return {
+          showHeader: true,
+          showSidebar: true,
+          showFeatures: true,
+          showFooter: true,
+        };
+      case "landing":
+        return {
+          showHeader: true,
+          showHero: true,
+          showFeatures: true,
+          showFooter: true,
+        };
+      case "ecommerce":
+        return {
+          showHeader: true,
+          showHero: true,
+          showAnnouncement: true,
+          showCategories: true,
+          showFeaturedProducts: true,
+          showPromotion: true,
+          showTrending: true,
+          showFooter: true,
+        };
+      case "portfolio":
+        return {
+          showHeader: true,
+          showHero: true,
+          showStats: true,
+          showProjects: true,
+          showSkills: true,
+          showTestimonials: true,
+          showCTA: true,
+          showFooter: true,
+        };
+      case "blog":
+        return {
+          showHeader: true,
+          showHero: true,
+          showFeatures: true,
+          showFooter: true,
+        };
+      default:
+        return {
+          showHeader: true,
+          showSidebar: true,
+          showFeatures: true,
+          showFooter: true,
+        };
+    }
+  };
+
+  // Add this function after the getTemplateSections function
+  const getTemplateLayoutOptions = () => {
+    const baseOptions = {
+      spacing: true,
+      typography: true,
+      density: true,
+      containerWidth: true,
+      cornerRadius: true,
+      shadowDepth: true,
+      animationSpeed: true,
+      contentAlignment: true,
+      buttonStyle: true,
+    };
+
+    switch (selectedTemplate) {
+      case "dashboard":
+        return {
+          ...baseOptions,
+          cardStyle: true,
+          gridColumns: true,
+          imageRatio: false,
+        };
+      case "landing":
+        return {
+          ...baseOptions,
+          cardStyle: true,
+          gridColumns: true,
+          imageRatio: true,
+        };
+      case "ecommerce":
+        return {
+          ...baseOptions,
+          cardStyle: true,
+          gridColumns: true,
+          imageRatio: true,
+        };
+      case "portfolio":
+        return {
+          ...baseOptions,
+          cardStyle: true,
+          gridColumns: true,
+          imageRatio: true,
+        };
+      case "blog":
+        return {
+          ...baseOptions,
+          cardStyle: true,
+          gridColumns: true,
+          imageRatio: true,
+        };
+      default:
+        return baseOptions;
+    }
+  };
+
+  // Update the useEffect to set template sections when template changes
+  useEffect(() => {
+    setTemplateConfig(getTemplateSections());
+  }, [selectedTemplate]);
+
   // Render the selected template with applied colors and layout options
   const renderTemplate = () => {
     const props = {
@@ -651,44 +767,50 @@ export function UIPlayground() {
                         </h4>
                       </div>
                       <div className="grid grid-cols-1 gap-1">
-                        {Object.entries(templateConfig).map(([key, value]) => (
-                          <div
-                            key={key}
-                            className="flex items-center justify-between"
-                          >
-                            <label
-                              htmlFor={`template-section-${key}`}
-                              className="text-sm text-gray-400 capitalize cursor-pointer"
-                            >
-                              {key.replace("show", "")}
-                            </label>
+                        {Object.entries(templateConfig)
+                          .filter(([key]) => {
+                            // Only show sections that are relevant to the current template
+                            const templateSections = getTemplateSections();
+                            return key in templateSections;
+                          })
+                          .map(([key, value]) => (
                             <div
-                              className="relative"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTemplateSection(key);
-                              }}
+                              key={key}
+                              className="flex items-center justify-between"
                             >
-                              <input
-                                id={`template-section-${key}`}
-                                type="checkbox"
-                                checked={value}
-                                onChange={() => toggleTemplateSection(key)}
-                                className="sr-only"
-                              />
+                              <label
+                                htmlFor={`template-section-${key}`}
+                                className="text-sm text-gray-400 capitalize cursor-pointer"
+                              >
+                                {key.replace("show", "")}
+                              </label>
                               <div
-                                className={`block h-5 w-9 rounded-full transition-colors cursor-pointer ${
-                                  value ? "bg-blue-600" : "bg-gray-600"
-                                }`}
-                              ></div>
-                              <div
-                                className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform cursor-pointer ${
-                                  value ? "translate-x-4" : "translate-x-0"
-                                }`}
-                              ></div>
+                                className="relative"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleTemplateSection(key);
+                                }}
+                              >
+                                <input
+                                  id={`template-section-${key}`}
+                                  type="checkbox"
+                                  checked={value}
+                                  onChange={() => toggleTemplateSection(key)}
+                                  className="sr-only"
+                                />
+                                <div
+                                  className={`block h-5 w-9 rounded-full transition-colors cursor-pointer ${
+                                    value ? "bg-blue-600" : "bg-gray-600"
+                                  }`}
+                                ></div>
+                                <div
+                                  className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform cursor-pointer ${
+                                    value ? "translate-x-4" : "translate-x-0"
+                                  }`}
+                                ></div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                     </div>
                   </SidebarSection>
@@ -842,126 +964,136 @@ export function UIPlayground() {
                   >
                     <div className="space-y-3">
                       {/* Container Width Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Container Width
-                        </label>
-                        <div className="grid grid-cols-2 gap-1">
-                          {["narrow", "standard", "wide", "full"].map(
-                            (option) => (
+                      {getTemplateLayoutOptions().containerWidth && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Container Width
+                          </label>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["narrow", "standard", "wide", "full"].map(
+                              (option) => (
+                                <button
+                                  key={option}
+                                  onClick={() =>
+                                    handleLayoutChange("containerWidth", option)
+                                  }
+                                  className={`py-1 px-2 rounded text-xs border ${
+                                    layoutOptions.containerWidth === option
+                                      ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                      : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                  }`}
+                                >
+                                  <span className="capitalize">{option}</span>
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Spacing Option */}
+                      {getTemplateLayoutOptions().spacing && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Spacing
+                          </label>
+                          <div className="grid grid-cols-3 gap-1">
+                            {["compact", "normal", "spacious"].map((option) => (
                               <button
                                 key={option}
                                 onClick={() =>
-                                  handleLayoutChange("containerWidth", option)
+                                  handleLayoutChange("spacing", option)
                                 }
                                 className={`py-1 px-2 rounded text-xs border ${
-                                  layoutOptions.containerWidth === option
+                                  layoutOptions.spacing === option
                                     ? "bg-blue-900/50 border-blue-700 text-blue-200"
                                     : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
                                 }`}
                               >
                                 <span className="capitalize">{option}</span>
                               </button>
-                            )
-                          )}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Spacing Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Spacing
-                        </label>
-                        <div className="grid grid-cols-3 gap-1">
-                          {["compact", "normal", "spacious"].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleLayoutChange("spacing", option)
-                              }
-                              className={`py-1 px-2 rounded text-xs border ${
-                                layoutOptions.spacing === option
-                                  ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                  : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                              }`}
-                            >
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      )}
 
                       {/* Density Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Element Density
-                        </label>
-                        <div className="grid grid-cols-3 gap-1">
-                          {["low", "medium", "high"].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleLayoutChange("density", option)
-                              }
-                              className={`py-1 px-2 rounded text-xs border ${
-                                layoutOptions.density === option
-                                  ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                  : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                              }`}
-                            >
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          ))}
+                      {getTemplateLayoutOptions().density && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Element Density
+                          </label>
+                          <div className="grid grid-cols-3 gap-1">
+                            {["low", "medium", "high"].map((option) => (
+                              <button
+                                key={option}
+                                onClick={() =>
+                                  handleLayoutChange("density", option)
+                                }
+                                className={`py-1 px-2 rounded text-xs border ${
+                                  layoutOptions.density === option
+                                    ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                    : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                }`}
+                              >
+                                <span className="capitalize">{option}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Grid Columns Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Grid Columns
-                        </label>
-                        <div className="grid grid-cols-2 gap-1">
-                          {["2", "3", "4", "auto-fit"].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleLayoutChange("gridColumns", option)
-                              }
-                              className={`py-1 px-2 rounded text-xs border ${
-                                layoutOptions.gridColumns === option
-                                  ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                  : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                              }`}
-                            >
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          ))}
+                      {getTemplateLayoutOptions().gridColumns && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Grid Columns
+                          </label>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["2", "3", "4", "auto-fit"].map((option) => (
+                              <button
+                                key={option}
+                                onClick={() =>
+                                  handleLayoutChange("gridColumns", option)
+                                }
+                                className={`py-1 px-2 rounded text-xs border ${
+                                  layoutOptions.gridColumns === option
+                                    ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                    : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                }`}
+                              >
+                                <span className="capitalize">{option}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Content Alignment Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Content Alignment
-                        </label>
-                        <div className="grid grid-cols-3 gap-1">
-                          {["left", "center", "right"].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleLayoutChange("contentAlignment", option)
-                              }
-                              className={`py-1 px-2 rounded text-xs border ${
-                                layoutOptions.contentAlignment === option
-                                  ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                  : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                              }`}
-                            >
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          ))}
+                      {getTemplateLayoutOptions().contentAlignment && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Content Alignment
+                          </label>
+                          <div className="grid grid-cols-3 gap-1">
+                            {["left", "center", "right"].map((option) => (
+                              <button
+                                key={option}
+                                onClick={() =>
+                                  handleLayoutChange("contentAlignment", option)
+                                }
+                                className={`py-1 px-2 rounded text-xs border ${
+                                  layoutOptions.contentAlignment === option
+                                    ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                    : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                }`}
+                              >
+                                <span className="capitalize">{option}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </SidebarSection>
 
@@ -973,13 +1105,19 @@ export function UIPlayground() {
                   >
                     <div className="space-y-3">
                       {/* Corner Radius Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Corner Radius
-                        </label>
-                        <div className="grid grid-cols-3 gap-1">
-                          {["none", "small", "medium", "large", "rounded"].map(
-                            (option) => (
+                      {getTemplateLayoutOptions().cornerRadius && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Corner Radius
+                          </label>
+                          <div className="grid grid-cols-3 gap-1">
+                            {[
+                              "none",
+                              "small",
+                              "medium",
+                              "large",
+                              "rounded",
+                            ].map((option) => (
                               <button
                                 key={option}
                                 onClick={() =>
@@ -993,36 +1131,38 @@ export function UIPlayground() {
                               >
                                 <span className="capitalize">{option}</span>
                               </button>
-                            )
-                          )}
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Shadow Depth Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Shadow Depth
-                        </label>
-                        <div className="grid grid-cols-2 gap-1">
-                          {["flat", "subtle", "medium", "pronounced"].map(
-                            (option) => (
-                              <button
-                                key={option}
-                                onClick={() =>
-                                  handleLayoutChange("shadowDepth", option)
-                                }
-                                className={`py-1 px-2 rounded text-xs border ${
-                                  layoutOptions.shadowDepth === option
-                                    ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                    : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                                }`}
-                              >
-                                <span className="capitalize">{option}</span>
-                              </button>
-                            )
-                          )}
+                      {getTemplateLayoutOptions().shadowDepth && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Shadow Depth
+                          </label>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["flat", "subtle", "medium", "pronounced"].map(
+                              (option) => (
+                                <button
+                                  key={option}
+                                  onClick={() =>
+                                    handleLayoutChange("shadowDepth", option)
+                                  }
+                                  className={`py-1 px-2 rounded text-xs border ${
+                                    layoutOptions.shadowDepth === option
+                                      ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                      : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                  }`}
+                                >
+                                  <span className="capitalize">{option}</span>
+                                </button>
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </SidebarSection>
 
@@ -1034,84 +1174,90 @@ export function UIPlayground() {
                   >
                     <div className="space-y-3">
                       {/* Card Style Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Card Style
-                        </label>
-                        <div className="grid grid-cols-3 gap-1">
-                          {[
-                            "default",
-                            "flat",
-                            "bordered",
-                            "elevated",
-                            "glass",
-                          ].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleLayoutChange("cardStyle", option)
-                              }
-                              className={`py-1 px-2 rounded text-xs border ${
-                                layoutOptions.cardStyle === option
-                                  ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                  : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                              }`}
-                            >
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Button Style Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Button Style
-                        </label>
-                        <div className="grid grid-cols-2 gap-1">
-                          {["default", "filled", "outlined", "text-only"].map(
-                            (option) => (
+                      {getTemplateLayoutOptions().cardStyle && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Card Style
+                          </label>
+                          <div className="grid grid-cols-3 gap-1">
+                            {[
+                              "default",
+                              "flat",
+                              "bordered",
+                              "elevated",
+                              "glass",
+                            ].map((option) => (
                               <button
                                 key={option}
                                 onClick={() =>
-                                  handleLayoutChange("buttonStyle", option)
+                                  handleLayoutChange("cardStyle", option)
                                 }
                                 className={`py-1 px-2 rounded text-xs border ${
-                                  layoutOptions.buttonStyle === option
+                                  layoutOptions.cardStyle === option
                                     ? "bg-blue-900/50 border-blue-700 text-blue-200"
                                     : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
                                 }`}
                               >
                                 <span className="capitalize">{option}</span>
                               </button>
-                            )
-                          )}
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* Button Style Option */}
+                      {getTemplateLayoutOptions().buttonStyle && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Button Style
+                          </label>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["default", "filled", "outlined", "text-only"].map(
+                              (option) => (
+                                <button
+                                  key={option}
+                                  onClick={() =>
+                                    handleLayoutChange("buttonStyle", option)
+                                  }
+                                  className={`py-1 px-2 rounded text-xs border ${
+                                    layoutOptions.buttonStyle === option
+                                      ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                      : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                  }`}
+                                >
+                                  <span className="capitalize">{option}</span>
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Image Ratio Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Image Ratio
-                        </label>
-                        <div className="grid grid-cols-2 gap-1">
-                          {["square", "4:3", "16:9", "auto"].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleLayoutChange("imageRatio", option)
-                              }
-                              className={`py-1 px-2 rounded text-xs border ${
-                                layoutOptions.imageRatio === option
-                                  ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                  : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                              }`}
-                            >
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          ))}
+                      {getTemplateLayoutOptions().imageRatio && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Image Ratio
+                          </label>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["square", "4:3", "16:9", "auto"].map((option) => (
+                              <button
+                                key={option}
+                                onClick={() =>
+                                  handleLayoutChange("imageRatio", option)
+                                }
+                                className={`py-1 px-2 rounded text-xs border ${
+                                  layoutOptions.imageRatio === option
+                                    ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                    : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                }`}
+                              >
+                                <span className="capitalize">{option}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </SidebarSection>
 
@@ -1123,28 +1269,32 @@ export function UIPlayground() {
                   >
                     <div className="space-y-3">
                       {/* Animation Speed Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Animation Speed
-                        </label>
-                        <div className="grid grid-cols-2 gap-1">
-                          {["none", "slow", "medium", "fast"].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleLayoutChange("animationSpeed", option)
-                              }
-                              className={`py-1 px-2 rounded text-xs border ${
-                                layoutOptions.animationSpeed === option
-                                  ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                  : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                              }`}
-                            >
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          ))}
+                      {getTemplateLayoutOptions().animationSpeed && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Animation Speed
+                          </label>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["none", "slow", "medium", "fast"].map(
+                              (option) => (
+                                <button
+                                  key={option}
+                                  onClick={() =>
+                                    handleLayoutChange("animationSpeed", option)
+                                  }
+                                  className={`py-1 px-2 rounded text-xs border ${
+                                    layoutOptions.animationSpeed === option
+                                      ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                      : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                  }`}
+                                >
+                                  <span className="capitalize">{option}</span>
+                                </button>
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </SidebarSection>
 
@@ -1156,28 +1306,30 @@ export function UIPlayground() {
                   >
                     <div className="space-y-3">
                       {/* Typography Option */}
-                      <div className="mb-3">
-                        <label className="block text-xs font-medium mb-1 text-gray-400">
-                          Typography
-                        </label>
-                        <div className="grid grid-cols-3 gap-1">
-                          {["default", "modern", "classic"].map((option) => (
-                            <button
-                              key={option}
-                              onClick={() =>
-                                handleLayoutChange("typography", option)
-                              }
-                              className={`py-1 px-2 rounded text-xs border ${
-                                layoutOptions.typography === option
-                                  ? "bg-blue-900/50 border-blue-700 text-blue-200"
-                                  : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
-                              }`}
-                            >
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          ))}
+                      {getTemplateLayoutOptions().typography && (
+                        <div className="mb-3">
+                          <label className="block text-xs font-medium mb-1 text-gray-400">
+                            Typography
+                          </label>
+                          <div className="grid grid-cols-3 gap-1">
+                            {["default", "modern", "classic"].map((option) => (
+                              <button
+                                key={option}
+                                onClick={() =>
+                                  handleLayoutChange("typography", option)
+                                }
+                                className={`py-1 px-2 rounded text-xs border ${
+                                  layoutOptions.typography === option
+                                    ? "bg-blue-900/50 border-blue-700 text-blue-200"
+                                    : "border-gray-700 hover:bg-gray-700/50 text-gray-400"
+                                }`}
+                              >
+                                <span className="capitalize">{option}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </SidebarSection>
                 </div>
