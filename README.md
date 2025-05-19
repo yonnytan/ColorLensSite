@@ -18,7 +18,7 @@
   Apply palettes to real-world templates (e.g., dashboards, portfolios) and preview their visual impact.
 
 - 🧰 **Color Management**  
-  Save, export, and share palettes in formats like **JSON**, **PNG**, and **JPG**.
+  Save, export, and share palettes.
 
 ## 🧰 Technical Stack
 
