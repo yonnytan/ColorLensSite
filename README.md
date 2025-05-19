@@ -1,6 +1,4 @@
-# 🎨 ColorLens: Color Palette Generator
-
-[🔗 Live Demo](https://colorlensapp.site)
+# 🎨 [ColorLens](https://colorlensapp.site)
 
 > A modern web application that helps designers, developers, and creatives extract, visualize, and manage color palettes from images and curated sources.
 
